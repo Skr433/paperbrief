@@ -157,12 +157,28 @@
   .glegend span{background:#fff;border:1px solid var(--line);color:var(--muted)}
   #gTip{background:#fff;border:1px solid var(--line);color:var(--txt);box-shadow:0 8px 24px rgba(0,0,0,.12)}
   #graphDetail{color:var(--txt)}
+  /* 全局字号 +1：12/14/16/18 -> 13/15/17/19 */
+  body{font-size:15px}
+  .logo{font-size:19px}
+  .sub{font-size:13px}
+  .card h3{font-size:15px}
+  .pill{font-size:13px}
+  .sidebar-hint{font-size:13px}
+  .subtab{font-size:13px}
+  #zoomLabel{font-size:13px}
+  .anchor{font-size:13px;padding:1px 7px}
+  .item{font-size:14px}
+  .ans{font-size:15px}
+  #transPop .en{font-size:13px}
+  #transPop .zh{font-size:15px}
+  #gTip{font-size:13px}
+  details.adv{font-size:13px}
 </style>
 </head>
 <body>
 <header>
   <div class="logo">Paper<span>Brief</span></div>
-  <div class="sub">论文汇报包助手 · 每条要点可点回原文 · <span style="color:#22d3ee;font-weight:600">v0.13.0</span></div>
+  <div class="sub">论文汇报包助手 · 每条要点可点回原文 · <span style="color:#22d3ee;font-weight:600">v0.13.1</span></div>
   <div class="grow"></div>
   <select id="lib"><option>正在加载论文库…</option></select>
   <button id="btnParse" class="primary">解析并生成汇报包</button>
@@ -773,7 +789,7 @@ function showDetail(nd){
     row.appendChild(b);
   }
   const tr = el("span", "anchor", "译标题");
-  tr.style.cssText = "border-color:#10b981;color:#6ee7b7;background:#064e3b55";
+  tr.style.cssText = "border-color:#a7f3d0;color:#047857;background:#ecfdf5;font-size:13px";
   tr.onclick = () => translateThis(nd.title || "");
   row.appendChild(tr);
   if(nd.doi){
@@ -1060,7 +1076,7 @@ function renderCompare(r){
       b.onclick = (e)=>{ e.stopPropagation(); jumpDoc(d.key, a.page, a.bbox); };
       item.appendChild(b);
       const tr = el("span","anchor","译");
-      tr.style.cssText = "border-color:#10b981;color:#6ee7b7;background:#064e3b55";
+      tr.style.cssText = "border-color:#a7f3d0;color:#047857;background:#ecfdf5;font-size:13px";
       tr.onclick = (e)=>{ e.stopPropagation(); translateThis(a.text); };
       item.appendChild(tr);
       item.onclick = ()=>jumpDoc(d.key, a.page, a.bbox);
@@ -1187,7 +1203,7 @@ const item = (text,page,bbox) => {
   d.onclick = ()=> jump(page,bbox);
   d.appendChild(badge(page,bbox));
   const tr = el("span","anchor","译");
-  tr.style.cssText = "border-color:#10b981;color:#6ee7b7;background:#064e3b55";
+  tr.style.cssText = "border-color:#a7f3d0;color:#047857;background:#ecfdf5;font-size:13px";
   tr.onclick = (e)=>{ e.stopPropagation(); translateThis(text); };
   d.appendChild(tr);
   return d;
@@ -1343,7 +1359,7 @@ async function doAsk(){
       const d = el("div","item", a.text.slice(0,200));
       d.appendChild(badge(a.page, a.bbox));
       const tr = el("span","anchor","译");
-      tr.style.cssText = "border-color:#10b981;color:#6ee7b7;background:#064e3b55";
+      tr.style.cssText = "border-color:#a7f3d0;color:#047857;background:#ecfdf5;font-size:13px";
       tr.onclick = (e)=>{ e.stopPropagation(); translateThis(a.text); };
       d.appendChild(tr);
       d.onclick = ()=>jump(a.page, a.bbox);
