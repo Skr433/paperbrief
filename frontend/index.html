@@ -197,7 +197,7 @@
 <body>
 <header>
   <div class="logo">Paper<span>Brief</span></div>
-  <div class="sub">论文汇报包助手 · 每条要点可点回原文 · <span style="color:#22d3ee;font-weight:600">v0.13.3</span></div>
+  <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.13.4</span></div>
   <div class="grow"></div>
   <select id="lib"><option>正在加载论文库…</option></select>
   <button id="btnParse" class="primary">解析并生成</button>
@@ -469,62 +469,74 @@ async function translateThis(text){
 
 
 
+let ARXIV_LAST = null;
+let ARXIV_EXPANDED = false;
+
 function renderArxiv(items, head, trace, keywords){
+  ARXIV_LAST = { items: items || [], head: head, trace: trace, keywords: keywords };
   const box = $("#arxivList"); box.innerHTML = "";
-  if(!items || !items.length){ box.innerHTML = '<div class="card muted">没有结果（可换个关键词）</div>'; return; }
+  const all = ARXIV_LAST.items;
+  if(!all.length){ box.innerHTML = '<div class="card muted">没有结果（可换个关键词）</div>'; return; }
+  const shown = ARXIV_EXPANDED ? all : all.slice(0, 5);
+
   const c = el("div","card");
-  c.appendChild(el("h3", null, head));
+  c.appendChild(el("h3", null, head || "推荐"));
   if(trace) c.appendChild(traceChips(trace));
-  if(keywords && keywords.length){
-    const kw = el("div","sidebar-hint","检索词：" + keywords.join(" / "));
-    kw.style.marginBottom = "6px";
-    c.appendChild(kw);
-  }
-  items.forEach(it=>{
+  if(keywords && keywords.length) c.appendChild(el("div","sidebar-hint","检索词：" + keywords.join(" / ")));
+
+  shown.forEach(it=>{
     const d = el("div","item");
     const a = document.createElement("a");
     a.href = it.link; a.target = "_blank";
     a.textContent = it.zh_title || it.title;
-    a.style.cssText = "color:#93c5fd;font-weight:600;text-decoration:none;font-size:13px";
+    a.style.cssText = "color:#1d4ed8;font-weight:600;text-decoration:none";
     d.appendChild(a);
-    if(it.zh_title){
-      const en = el("div","sidebar-hint", it.title);
-      en.style.opacity = "0.7";
-      d.appendChild(en);
-    }
-    const meta = [it.published, (it.authors||[]).join(", ")].filter(Boolean).join(" · ");
+
+    const meta = [it.published, (it.authors||[]).slice(0,3).join(", ")].filter(Boolean).join(" · ");
     if(meta) d.appendChild(el("div","sidebar-hint", meta));
-    if(it.venue){
-      const v = el("div","sidebar-hint", "出处：" + it.venue.slice(0, 80));
-      v.style.color = "#6ee7b7";
-      d.appendChild(v);
-    }
+
     if(it.tags && it.tags.length){
       const tagRow = el("div");
       tagRow.style.cssText = "margin:4px 0";
       it.tags.forEach(tg=>{
         const b = el("span","pill",tg);
-        b.style.cssText = "background:#064e3b;border:1px solid #10b981;color:#6ee7b7;margin-right:6px;font-size:11px";
         if(it.venue) b.title = it.venue;
         tagRow.appendChild(b);
       });
       d.appendChild(tagRow);
-    } else if(it.has_code){
-      const b = el("span","pill","有代码");
-      b.style.cssText = "background:#064e3b;border:1px solid #10b981;color:#6ee7b7;margin:4px 0;display:inline-block;font-size:11px";
-      d.appendChild(b);
     }
+
+    if(it.venue){
+      d.appendChild(el("div","sidebar-hint", "出处：" + it.venue.slice(0, 80)));
+    }
+
     if(it.zh_summary){
-      const zh = el("div","muted", it.zh_summary);
-      zh.style.color = "#1f2937";
-      d.appendChild(zh);
+      d.appendChild(el("div","ans", it.zh_summary));
     }
-    const enSum = (it.summary || "");
-    if(enSum){
-      d.appendChild(el("div","muted", enSum.slice(0, 220) + (enSum.length > 220 ? "…" : "")));
+
+    if(it.zh_title && it.title){
+      const det = el("details","adv");
+      det.appendChild(el("summary", null, "English"));
+      const en = el("div", null, it.title);
+      en.style.cssText = "color:#1f2937;margin:4px 0";
+      det.appendChild(en);
+      if(it.summary){
+        const es = el("div","sidebar-hint", it.summary.slice(0, 300) + (it.summary.length > 300 ? "…" : ""));
+        det.appendChild(es);
+      }
+      d.appendChild(det);
+    } else if(!it.zh_title && it.summary){
+      d.appendChild(el("div","sidebar-hint", it.summary.slice(0, 240) + "…"));
     }
     c.appendChild(d);
   });
+
+  if(all.length > 5){
+    const more = el("button", null, ARXIV_EXPANDED ? "收起" : ("查看更多（共 " + all.length + " 条）"));
+    more.style.marginTop = "6px";
+    more.onclick = () => { ARXIV_EXPANDED = !ARXIV_EXPANDED; renderArxiv(ARXIV_LAST.items, ARXIV_LAST.head, ARXIV_LAST.trace, ARXIV_LAST.keywords); };
+    c.appendChild(more);
+  }
   box.appendChild(c);
 }
 
@@ -533,6 +545,7 @@ async function doArxivRec(){
   $("#arxivList").innerHTML = '<div class="card">检索 arXiv…（约 2–20 秒）</div>';
   try{
     const r = await api("/api/recommend?key=" + S.key);
+    ARXIV_EXPANDED = false;
     renderArxiv(r.items, "与「" + (r.title||"").slice(0,40) + "」相关的 arXiv 新论文", r.trace, r.keywords);
     if(r.stale){
       const hint = el("div","card");
@@ -558,6 +571,7 @@ async function doArxivSearch(){
   $("#arxivList").innerHTML = '<div class="card">检索 arXiv…（约 2–20 秒）</div>';
   try{
     const r = await api("/api/arxiv?q=" + encodeURIComponent(q));
+    ARXIV_EXPANDED = false;
     renderArxiv(r.items, "搜索：" + q, r.trace);
     if(r.stale){
       const hint = el("div","card");
