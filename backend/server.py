@@ -615,7 +615,7 @@ class Handler(SimpleHTTPRequestHandler):
                     return self._send(*_json({"error": "缺少关键词"}, 400))
                 limit = int(q.get("limit", ["8"])[0])
                 t0 = time.time()
-                q_key = "q:" + term.lower()[:80]
+                q_key = "q:v2:" + term.lower()[:80]
                 try:
                     items = arxiv.search(term, limit)
                     try:
@@ -647,7 +647,7 @@ class Handler(SimpleHTTPRequestHandler):
                         kws = llm.arxiv_keywords(parsed["meta"]["title"])
                     except Exception:
                         kws = None
-                cache_key = "rec:" + key
+                cache_key = "rec:v2:" + key
                 try:
                     items = arxiv.recommend(parsed["meta"]["title"], limit, extra_keywords=kws)
                     if llm.available() and items:
@@ -663,9 +663,10 @@ class Handler(SimpleHTTPRequestHandler):
                     refs = [r.get("text", "") for r in (parsed.get("references") or [])]
                     items = score_arxiv(items, kws or [], refs, llm_sorted=True)
                     try:
-                        items = arxiv.enrich_venues(items[:5]) + items[5:]
+                        items = arxiv.enrich_venues(items[:8])
                     except Exception:
                         pass
+                    items.sort(key=lambda x: (0 if x.get("venue_type") else 1, x.get("llm_rank", 99)))
                     items = enrich_arxiv(items)
                 except Exception as e:
                     cached = _arxiv_cache_get(cache_key)

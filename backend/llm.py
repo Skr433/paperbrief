@@ -282,9 +282,7 @@ def rank_arxiv(title: str, items: list[dict]) -> list[int]:
     material = "当前论文标题：" + title + "\n候选论文：\n" + "\n".join(lines)
     messages = [
         {"role": "system", "content": (
-            "你是论文检索评估员。按“是否解决同一问题 / 是否同一技术脉络 / 是否只是共享术语”判断，"
-            "把候选论文从最相关到最不相关排序。只输出一行：序号用逗号分隔，例如 3,1,5,2,4,6,7,8。"
-            "不要解释，不要遗漏序号。"
+            "你是论文检索评估员。判断候选论文与当前论文是否同一研究主题：只共享通用词（transformer、neural、paper、learning 等）不算相关；方法或问题明显不同（如金融、生物、通信）应排到最后。把候选论文从最相关到最不相关排序，只输出一行序号（逗号分隔），不要解释，不要遗漏。"
         )},
         {"role": "user", "content": material},
     ]

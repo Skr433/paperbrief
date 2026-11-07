@@ -62,11 +62,16 @@ def _clean(s: str) -> str:
     return re.sub(r"\s+", " ", (s or "")).strip()
 
 
+BAD_KEYWORDS = {"paper", "papers", "study", "method", "methods", "approach", "approaches",
+                "model", "models", "using", "based", "towards", "toward", "via", "analysis",
+                "new", "novel", "results", "result", "work", "works", "deep"}
+
+
 def keywords_from_title(title: str, limit: int = 4) -> list[str]:
     words = re.findall(r"[A-Za-z][A-Za-z\-]{3,}", (title or "").lower())
     out, seen = [], set()
     for w in words:
-        if w in _STOP or w in seen:
+        if w in _STOP or w in BAD_KEYWORDS or w in seen:
             continue
         seen.add(w)
         out.append(w)
@@ -209,15 +214,20 @@ def search(query: str, limit: int = 8) -> list[dict]:
 
 def recommend(title: str, limit: int = 8, extra_keywords: list[str] | None = None) -> list[dict]:
     """基于论文标题关键词（或外部给定关键词），找最近提交的相关论文。"""
-    kws = [k for k in (extra_keywords or []) if k]
+    kws = [k for k in (extra_keywords or []) if k and k.lower() not in BAD_KEYWORDS]
     if not kws:
         kws = keywords_from_title(title)
     if not kws:
         return []
-    expr = "+AND+".join(f"all:{urllib.parse.quote(w)}" for w in kws)
-    url = f"{API}?search_query={expr}&start=0&max_results={limit * 2}&sortBy=submittedDate&sortOrder=descending"
+    kws = list(dict.fromkeys(kws))[:4]
+    if len(kws) <= 2:
+        phrase = urllib.parse.quote(" ".join(kws))
+        expr = f'all:"{phrase}"'
+    else:
+        expr = "+AND+".join(f"all:{urllib.parse.quote(w)}" for w in kws)
+    url = f"{API}?search_query={expr}&start=0&max_results={limit * 3}&sortBy=submittedDate&sortOrder=descending"
     with _open(url) as r:
-        items = _parse(r.read(), limit * 2)
+        items = _parse(r.read(), limit * 3)
     # 去重 + 只保留近 18 个月
     seen, out = set(), []
     now_year = time.localtime().tm_year
