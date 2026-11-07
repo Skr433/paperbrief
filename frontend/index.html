@@ -197,7 +197,7 @@
 <body>
 <header>
   <div class="logo">Paper<span>Brief</span></div>
-  <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.13.5</span></div>
+  <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.13.6</span></div>
   <div class="grow"></div>
   <select id="lib"><option>正在加载论文库…</option></select>
   <button id="btnParse" class="primary">解析并生成</button>
@@ -1443,14 +1443,33 @@ document.querySelectorAll(".tab").forEach(t=>{
 });
 
 loadLibrary().then(()=>{
-  // 深链接：?auto=文件名&brief=1  → 自动解析并生成汇报包（录屏/评审演示用）
+  // 深链接（录屏/截图/评审演示用）
+  //   ?auto=文件名&brief=1                自动解析 + 生成汇报包
+  //   &tab=ask&q=问题                     生成后自动切到问答并提问
+  //   &anchor=1                           跳转并高亮第一条关键贡献
+  //   &tab=tools&sub=graph|tr|chart|arxiv 切到工具二级页
   const p = new URLSearchParams(location.search);
   const auto = p.get("auto");
   if(auto){
     const sel = $("#lib");
     for(const o of sel.options){ if(o.value === auto) sel.value = auto; }
     $("#btnParse").click();
-    setTimeout(()=>{ if(p.get("brief")!=="0") doBrief(); }, 900);
+    setTimeout(async ()=>{
+      if(p.get("brief")!=="0") await doBrief();
+      const tab = p.get("tab");
+      const sub = p.get("sub");
+      if(tab === "ask"){
+        document.querySelector('.tab[data-tab="ask"]').click();
+        const q = p.get("q");
+        if(q){ $("#q").value = q; doAsk(); }
+      } else if(tab === "tools"){
+        document.querySelector('.tab[data-tab="tools"]').click();
+        if(sub) showSub(sub);
+      } else if(p.get("anchor") === "1" && S.brief && S.brief.contributions && S.brief.contributions.length){
+        const c = S.brief.contributions[0];
+        jump(c.page, c.bbox);
+      }
+    }, 900);
   }
 });
 </script>
