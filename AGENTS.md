@@ -33,6 +33,8 @@ python scripts/evaluate.py --base http://1.14.98.248     # 评测报告
 5. 不新增第三方依赖（已批准的 fastembed spike 除外；服务器 2G 内存，禁止 torch/matplotlib）。
 6. 提交被 `.githooks/pre-commit` 拒绝：说明文件 >20KB，按功能拆分后再提交。
 7. 写新函数/新规则前，先搜仓库里有没有现成实现（同一条规则只放一处）。
+8. **下载/安装任何大文件（>100MB）前必须先问用户**：说明大小、用途、存哪里；安装包统一存 `E:\installers\`，不要留在下载目录。
+
 
 ## 已知坑
 
