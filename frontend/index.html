@@ -185,6 +185,9 @@
   .item .muted{color:#374151}
   .item .sidebar-hint{color:#4b5563}
   /* 窄屏：标签吸顶，随时可切 */
+  html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  #landing-view,#about-view{min-height:100vh}
+  .btn-home{height:36px;padding:0 10px;font-size:14px;color:#4b5563}
   @media (max-width:980px){
     #side{overflow:visible}
     .tabs{position:sticky;top:0;z-index:30;background:#fff;padding:8px 0 4px;border-bottom:1px solid var(--line);margin-bottom:8px}
@@ -331,7 +334,6 @@
       <a href="#/app/brief">工作台</a>
       <a href="#/about">关于</a>
     </nav>
-    <a class="btn btn-primary" href="#/app/brief">开始使用</a>
   </header>
 
   <section class="hero">
@@ -363,7 +365,7 @@
   </section>
 
   <footer class="l-foot">
-    <span>PaperBrief v0.14.0 · 每条结论都能点回原文</span>
+    <span>PaperBrief v0.14.1 · 每条结论都能点回原文</span>
     <span><a href="#/about">技术说明与已知限制</a> · 第九届传智杯 · 科研小助手 Agent</span>
   </footer>
 </div>
@@ -372,7 +374,6 @@
   <header class="l-head">
     <div class="l-logo">Paper<span>Brief</span></div>
     <nav class="l-nav"><a href="#/">首页</a><a href="#/app/brief">工作台</a><a href="#/about" class="on">关于</a></nav>
-    <a class="btn btn-primary" href="#/app/brief">开始使用</a>
   </header>
   <section class="doc">
     <h1>关于 PaperBrief</h1>
@@ -383,7 +384,7 @@
     <p>扫描版 PDF 无 OCR；部分论文参考文献排版特殊时解析条数会偏少（已给出提示）；arXiv 从国内访问偶发超时，已做重试、缓存与友好提示；本地 3B 模型质量弱于云端，定位为离线演示。</p>
     <p><a href="https://github.com/Skr433/paperbrief">代码仓库</a> · <a href="#/app/brief">进入工作台</a></p>
   </section>
-  <footer class="l-foot"><span>PaperBrief v0.14.0</span><span>第九届传智杯 · 赛道 10040</span></footer>
+  <footer class="l-foot"><span>PaperBrief v0.14.1</span><span>第九届传智杯 · 赛道 10040</span></footer>
 </div>
 
 <div id="app-shell" style="display:none">
@@ -402,8 +403,9 @@
 </nav>
 
 <header>
+  <a class="btn btn-home" href="#/" title="返回首页">⌂ 首页</a>
   <div class="logo">Paper<span>Brief</span></div>
-  <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.0</span></div>
+  <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.1</span></div>
   <div class="grow"></div>
   <select id="lib"><option>正在加载论文库…</option></select>
   <button id="btnParse" class="primary">解析并生成</button>
@@ -1665,6 +1667,8 @@ function showView(which){
   about.style.display = which === "about" ? "block" : "none";
   shell.style.display = which === "app" ? "grid" : "none";
   document.body.style.overflow = which === "app" ? "hidden" : "auto";
+  document.documentElement.style.overflowY = which === "app" ? "hidden" : "auto";
+  document.body.style.height = which === "app" ? "100vh" : "auto";
   window.scrollTo(0, 0);
 }
 
