@@ -33,18 +33,29 @@ CODE_HINTS = ("github.com", "gitlab.com", "code is available", "code available",
               "open source", "we release", "source code")
 
 
-def _open(url: str, timeout: int = 25):
-    req = urllib.request.Request(url, headers={"User-Agent": "paperbrief/0.9 (mailto:dev@example.com)"})
-    try:
-        return urllib.request.urlopen(req, timeout=timeout)
-    except Exception as e:
-        # 本机 Python 缺 CA 证书时，降级为不校验证书（仅用于公开元数据查询）
-        msg = str(e)
-        reason = getattr(e, "reason", None)
-        if "CERTIFICATE_VERIFY_FAILED" in msg or isinstance(reason, ssl.SSLError):
-            ctx = ssl._create_unverified_context()
-            return urllib.request.urlopen(req, timeout=timeout, context=ctx)
-        raise
+def _open(url: str, timeout: int = 18):
+    """arXiv 从国内机房不稳定：两次尝试 + 明确错误信息。"""
+    import time as _time
+    req = urllib.request.Request(url, headers={"User-Agent": "paperbrief/0.12 (mailto:dev@example.com)"})
+    last = None
+    for attempt in range(2):
+        try:
+            return urllib.request.urlopen(req, timeout=timeout)
+        except Exception as e:
+            msg = str(e)
+            reason = getattr(e, "reason", None)
+            if "CERTIFICATE_VERIFY_FAILED" in msg or isinstance(reason, ssl.SSLError):
+                try:
+                    ctx = ssl._create_unverified_context()
+                    return urllib.request.urlopen(req, timeout=timeout, context=ctx)
+                except Exception as e2:
+                    last = e2
+            else:
+                last = e
+            if attempt == 0:
+                _time.sleep(1.5)
+            else:
+                raise RuntimeError("arXiv 网络超时") from last
 
 
 def _clean(s: str) -> str:

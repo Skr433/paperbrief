@@ -109,7 +109,7 @@
 <body>
 <header>
   <div class="logo">Paper<span>Brief</span></div>
-  <div class="sub">论文汇报包助手 · 每条要点可点回原文 · <span style="color:#22d3ee;font-weight:600">v0.12.1</span></div>
+  <div class="sub">论文汇报包助手 · 每条要点可点回原文 · <span style="color:#22d3ee;font-weight:600">v0.12.3</span></div>
   <div class="grow"></div>
   <select id="lib"><option>正在加载论文库…</option></select>
   <button id="btnParse" class="primary">解析并生成汇报包</button>
@@ -305,7 +305,14 @@ const SAMPLES = [
 
 async function api(path, opts={}) {
   const r = await fetch(path, opts);
-  if (!r.ok) throw new Error(await r.text());
+  if (!r.ok) {
+    const txt = await r.text();
+    let msg = txt;
+    try { const j = JSON.parse(txt); msg = j.error || txt; } catch(e) {}
+    const err = new Error(msg);
+    err.status = r.status;
+    throw err;
+  }
   const ct = r.headers.get("content-type")||"";
   return ct.includes("json") ? r.json() : r.text();
 }
@@ -434,26 +441,54 @@ function renderArxiv(items, head, trace, keywords){
   box.appendChild(c);
 }
 
-$("#btnArxivRec").onclick = async ()=>{
+async function doArxivRec(){
   if(!S.key){ $("#arxivList").innerHTML = '<div class="card">请先解析论文</div>'; return; }
-  $("#arxivList").innerHTML = '<div class="card">检索 arXiv…</div>';
+  $("#arxivList").innerHTML = '<div class="card">检索 arXiv…（约 2–20 秒）</div>';
   try{
     const r = await api("/api/recommend?key=" + S.key);
-    if(r.error){ $("#arxivList").innerHTML = '<div class="card">失败：'+r.error+'</div>'; return; }
     renderArxiv(r.items, "与「" + (r.title||"").slice(0,40) + "」相关的 arXiv 新论文", r.trace, r.keywords);
-  }catch(e){ $("#arxivList").innerHTML = '<div class="card">失败：'+e.message+'</div>'; }
-};
+    if(r.stale){
+      const hint = el("div","card");
+      hint.innerHTML = '<span style="color:#fde68a">arXiv 暂时不可达，以下为 ' + (r.stale_ts || "上次") + ' 的缓存结果</span>';
+      $("#arxivList").prepend(hint);
+    }
+  }catch(e){
+    $("#arxivList").innerHTML = '';
+    const c = el("div","card");
+    c.innerHTML = '<div style="color:#cbd5e1">arXiv 暂时不可达：' + (e.message || "网络超时") + '</div>';
+    const btn = el("button", null, "重试");
+    btn.style.marginTop = "8px";
+    btn.onclick = doArxivRec;
+    c.appendChild(btn);
+    $("#arxivList").appendChild(c);
+  }
+}
+$("#btnArxivRec").onclick = doArxivRec;
 
-$("#btnArxivSearch").onclick = async ()=>{
+async function doArxivSearch(){
   const q = $("#arxivQ").value.trim();
   if(!q){ $("#arxivList").innerHTML = '<div class="card">请输入关键词</div>'; return; }
-  $("#arxivList").innerHTML = '<div class="card">检索 arXiv…</div>';
+  $("#arxivList").innerHTML = '<div class="card">检索 arXiv…（约 2–20 秒）</div>';
   try{
     const r = await api("/api/arxiv?q=" + encodeURIComponent(q));
-    if(r.error){ $("#arxivList").innerHTML = '<div class="card">失败：'+r.error+'</div>'; return; }
     renderArxiv(r.items, "搜索：" + q, r.trace);
-  }catch(e){ $("#arxivList").innerHTML = '<div class="card">失败：'+e.message+'</div>'; }
-};
+    if(r.stale){
+      const hint = el("div","card");
+      hint.innerHTML = '<span style="color:#fde68a">arXiv 暂时不可达，以下为 ' + (r.stale_ts || "上次") + ' 的缓存结果</span>';
+      $("#arxivList").prepend(hint);
+    }
+  }catch(e){
+    $("#arxivList").innerHTML = '';
+    const c = el("div","card");
+    c.innerHTML = '<div style="color:#cbd5e1">arXiv 暂时不可达：' + (e.message || "网络超时") + '</div>';
+    const btn = el("button", null, "重试");
+    btn.style.marginTop = "8px";
+    btn.onclick = doArxivSearch;
+    c.appendChild(btn);
+    $("#arxivList").appendChild(c);
+  }
+}
+$("#btnArxivSearch").onclick = doArxivSearch;
 
 let CSV_INFO = null;
 

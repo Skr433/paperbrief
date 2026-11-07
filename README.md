@@ -77,6 +77,21 @@ $env:DEEPSEEK_API_KEY="sk-xxxx"        # PowerShell
 
 **准备论文**：把 PDF 放进 `pdf/` 目录，或设置 `PAPERBRIEF_PDF_DIR=/path/to/pdf`。
 
+### 本地模型（离线，可选）
+
+同一套代码支持切换到本机 Ollama，完全不依赖云 API：
+
+```bash
+# 1) 安装 Ollama 后导入 GGUF 模型（国内从 hf-mirror 下载，不依赖官方仓库）
+ollama create qwen2.5-3b-local -f Modelfile
+# 2) 启动本地版（Windows 双击 start_local_llm.bat）
+#    等价环境变量：OLLAMA_BASE_URL=http://127.0.0.1:11434  OLLAMA_MODEL=qwen2.5-3b-local
+python backend/server.py
+# 3) 打开 http://127.0.0.1:8010
+```
+
+实测（RX 7700S 8GB）：qwen2.5-3b q4 推理 **79 tok/s**，单问题 **0.6–1.4 秒**；简单事实题正确，复杂提取题质量弱于云端 DeepSeek，定位为**离线降级方案**。
+
 ---
 
 ## 5. 目录结构
@@ -122,7 +137,8 @@ sudo bash deploy.sh
 2. 扫描件（无文本层）未接 OCR，解析结果为 0 段落。
 3. 服务器 2G 内存：混合检索采用「BM25 召回前 20 段 + bge-small 向量重排」，不做全库向量索引（首次编码约 0.5s，之后走缓存）。
 4. OpenAlex / Semantic Scholar 对机房 IP 限流（429），引文数据改用 Crossref + 标题相似关联。
-5. 1.4 的「论文自动下载」与「点赞/踩」未实现。
+5. 1.4 的「论文自动下载」与「点赞/踩」未实现；
+6. arXiv 从国内机房访问不稳定（偶发超时），已做重试 + 结果缓存 + 友好提示，演示前建议先点一次预热缓存。
 
 ---
 

@@ -507,6 +507,39 @@ def score_arxiv(items: list[dict], keywords: list[str], refs: list[str], llm_sor
     return items
 
 
+
+
+ARXIV_CACHE = os.path.join(DATA, "arxiv_cache.json")
+
+
+def _arxiv_cache_get(key: str):
+    try:
+        data = json.load(open(ARXIV_CACHE, encoding="utf-8"))
+    except Exception:
+        return None
+    return data.get(key)
+
+
+def _arxiv_cache_put(key: str, items: list):
+    try:
+        data = {}
+        if os.path.exists(ARXIV_CACHE):
+            data = json.load(open(ARXIV_CACHE, encoding="utf-8"))
+        data[key] = {"ts": time.strftime("%Y-%m-%d %H:%M"), "items": items}
+        json.dump(data, open(ARXIV_CACHE, "w", encoding="utf-8"), ensure_ascii=False)
+    except Exception:
+        pass
+
+
+
+def _provider_label() -> str:
+    p = llm.provider()
+    if p.startswith("ollama"):
+        return "本地 Ollama"
+    if p.startswith("deepseek"):
+        return "DeepSeek"
+    return "模型"
+
 def _step(steps: list, name: str, t0: float, detail: str = ""):
     steps.append({"step": name, "ms": int((time.time() - t0) * 1000), "detail": detail})
 
@@ -582,6 +615,7 @@ class Handler(SimpleHTTPRequestHandler):
                     return self._send(*_json({"error": "缺少关键词"}, 400))
                 limit = int(q.get("limit", ["8"])[0])
                 t0 = time.time()
+                q_key = "q:" + term.lower()[:80]
                 try:
                     items = arxiv.search(term, limit)
                     try:
@@ -590,8 +624,13 @@ class Handler(SimpleHTTPRequestHandler):
                         pass
                     items = score_arxiv(items, [w for w in re.split(r"[\s,，]+", term) if len(w) > 3], [])
                     items = enrich_arxiv(items)
+                    _arxiv_cache_put(q_key, items)
                 except Exception as e:
-                    return self._send(*_json({"error": "arXiv 请求失败：" + str(e)[:150]}, 502))
+                    cached = _arxiv_cache_get(q_key)
+                    if cached:
+                        return self._send(*_json({"query": term, "items": cached["items"], "stale": True,
+                                                  "stale_ts": cached.get("ts", "")}))
+                    return self._send(*_json({"error": "arXiv 暂时不可达（网络超时），请稍后重试", "retry": True}, 503))
                 return self._send(*_json({"query": term, "items": items,
                                           "trace": [{"step": "arXiv 搜索", "ms": int((time.time() - t0) * 1000),
                                                      "detail": "%d 条" % len(items)}]}))
@@ -608,9 +647,9 @@ class Handler(SimpleHTTPRequestHandler):
                         kws = llm.arxiv_keywords(parsed["meta"]["title"])
                     except Exception:
                         kws = None
+                cache_key = "rec:" + key
                 try:
                     items = arxiv.recommend(parsed["meta"]["title"], limit, extra_keywords=kws)
-                    # LLM 给出相关度排序（比打分稳），失败退回关键词排序
                     if llm.available() and items:
                         try:
                             order = llm.rank_arxiv(parsed["meta"]["title"], items)
@@ -629,7 +668,15 @@ class Handler(SimpleHTTPRequestHandler):
                         pass
                     items = enrich_arxiv(items)
                 except Exception as e:
-                    return self._send(*_json({"error": "arXiv 请求失败：" + str(e)[:150]}, 502))
+                    cached = _arxiv_cache_get(cache_key)
+                    if cached:
+                        return self._send(*_json({"title": parsed["meta"]["title"], "items": cached["items"],
+                                                  "keywords": kws or [], "stale": True,
+                                                  "stale_ts": cached.get("ts", ""),
+                                                  "trace": [{"step": "arXiv 不可达，返回缓存", "ms": int((time.time() - t0) * 1000),
+                                                             "detail": "缓存于 " + cached.get("ts", "?")}]}))
+                    return self._send(*_json({"error": "arXiv 暂时不可达（网络超时），请稍后重试", "retry": True}, 503))
+                _arxiv_cache_put(cache_key, items)
                 step = {"step": "arXiv 相关推荐", "ms": int((time.time() - t0) * 1000),
                         "detail": "%d 条（关键词：%s）" % (len(items), " / ".join(kws) if kws else "标题分词")}
                 return self._send(*_json({"title": parsed["meta"]["title"], "items": items,
@@ -668,7 +715,7 @@ class Handler(SimpleHTTPRequestHandler):
                     try:
                         brief["ai_summary"] = llm.summarize_brief(brief)
                         brief["ai_model"] = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
-                        _step(steps, "AI 摘要", t1, "DeepSeek")
+                        _step(steps, "AI 摘要", t1, _provider_label())
                     except Exception as e:
                         brief["ai_error"] = str(e)[:200]
                         _step(steps, "AI 摘要失败，保留抽取式", t1, str(e)[:60])
@@ -727,7 +774,7 @@ class Handler(SimpleHTTPRequestHandler):
                         pages = "、".join(str(a["page"]) for a in res["anchors"])
                         res["answer"] = text + f"\n\n（依据原文：第 {pages} 页，可点击下方锚点核对）"
                         res["mode"] = "llm"
-                        _step(steps, "生成（DeepSeek）", t1, "依据 %d 段原文" % len(res["anchors"]))
+                        _step(steps, "生成（" + _provider_label() + "）", t1, "依据 %d 段原文" % len(res["anchors"]))
                     except Exception as e:
                         res["llm_error"] = str(e)[:200]
                         _step(steps, "生成失败，回退抽取式", t1, str(e)[:60])
@@ -769,7 +816,7 @@ class Handler(SimpleHTTPRequestHandler):
                     try:
                         res["answer"] = llm.compare_with_evidence(question, docs)
                         res["mode"] = "llm+compare"
-                        _step(steps, "生成对比结论", t1, "DeepSeek")
+                        _step(steps, "生成对比结论", t1, _provider_label())
                     except Exception as e:
                         res["llm_error"] = str(e)[:200]
                         _step(steps, "生成失败，回退原文", t1, str(e)[:60])
@@ -828,7 +875,7 @@ class Handler(SimpleHTTPRequestHandler):
                     t1 = time.time()
                     try:
                         caption_text = llm.caption(x, summary["series"], kind)
-                        _step(steps, "生成图注（DeepSeek）", t1, "1–2 句")
+                        _step(steps, "生成图注（" + _provider_label() + "）", t1, "1–2 句")
                     except Exception as e:
                         summary["caption_error"] = str(e)[:120]
                 snippet = matplotlib_snippet(name, header, x, ys, kind)
