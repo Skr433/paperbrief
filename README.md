@@ -3,6 +3,7 @@
 > 一个「每条结论都能点回原文」的科研阅读 Agent。
 > 第九届传智杯 AI 大模型创新应用挑战赛 · 科研小助手 Agent 命题 · 个人赛
 
+**代码仓库**：<https://github.com/Skr433/paperbrief>
 **在线演示**：<http://1.14.98.248/>（腾讯云，长期在线）
 **演示视频**：<https://www.bilibili.com/video/BV1Jrxe6YE9e>
 
