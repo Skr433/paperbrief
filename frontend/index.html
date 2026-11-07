@@ -193,11 +193,217 @@
     header button,header select{flex:1 1 auto}
   }
 </style>
+
+<style id="site-shell">
+  /* ===== 站点外壳（落地页 / 工作台 / 关于） ===== */
+  body{font-size:15px}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
+       height:42px;padding:0 18px;border-radius:8px;border:1px solid var(--line);
+       background:#fff;color:var(--txt);font-size:15px;cursor:pointer;text-decoration:none;
+       transition:transform .12s ease, box-shadow .15s ease, background .15s ease;
+       white-space:nowrap}
+  .btn:hover{border-color:#cbd5e1;box-shadow:0 2px 10px rgba(15,23,42,.06)}
+  .btn:active{transform:scale(.98)}
+  .btn-primary{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600}
+  .btn-primary:hover{background:#1d4ed8;border-color:#1d4ed8;box-shadow:0 6px 18px rgba(37,99,235,.22)}
+  .btn-lg{height:48px;padding:0 26px;font-size:16px;border-radius:10px}
+
+  /* 落地页头部 */
+  .l-head{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:26px;
+          padding:14px 40px;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);
+          border-bottom:1px solid var(--line)}
+  .l-logo{font-weight:800;font-size:20px;letter-spacing:-.2px}
+  .l-logo span{color:var(--brand)}
+  .l-nav{display:flex;gap:6px;flex:1}
+  .l-nav a{padding:7px 12px;border-radius:7px;color:var(--muted);text-decoration:none;font-size:14px;transition:.15s}
+  .l-nav a:hover{color:var(--txt);background:#f1f3f5}
+  .l-nav a.on{color:var(--txt);font-weight:600;background:#f1f3f5}
+
+  /* Hero */
+  .hero{position:relative;max-width:900px;margin:0 auto;padding:76px 24px 40px;text-align:center}
+  .hero::before{content:"";position:absolute;inset:-80px 0 auto;height:340px;
+                background:radial-gradient(600px 220px at 50% 40%, #eff6ff 0%, rgba(255,255,255,0) 70%);
+                z-index:-1}
+  .hero h1{font-size:44px;line-height:1.25;margin:0 0 18px;letter-spacing:-.5px;font-weight:800}
+  .hero-sub{font-size:17px;color:var(--muted);line-height:1.8;margin:0 0 26px}
+  .hero-actions{display:flex;gap:12px;justify-content:center;margin-bottom:14px}
+  .hero-note{font-size:13px;color:#94a3b8}
+
+  /* 三步 */
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:1000px;margin:26px auto 0;padding:0 24px}
+  .step{background:#fff;border:1px solid var(--line);border-radius:12px;padding:20px 22px;text-align:left;
+        animation:fadeUp .5s ease both}
+  .step:nth-child(2){animation-delay:.06s}
+  .step:nth-child(3){animation-delay:.12s}
+  .step-n{display:inline-flex;width:26px;height:26px;border-radius:50%;align-items:center;justify-content:center;
+          background:#eff6ff;color:var(--brand);font-weight:700;font-size:14px;margin-bottom:10px}
+  .step b{display:block;font-size:16px;margin-bottom:4px}
+  .step p{margin:0;color:var(--muted);font-size:14px;line-height:1.7}
+
+  /* 功能卡片 */
+  .features{max-width:1000px;margin:64px auto 30px;padding:0 24px}
+  .features h2{font-size:26px;margin:0 0 22px;letter-spacing:-.3px}
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .fcard{display:block;background:#fff;border:1px solid var(--line);border-radius:12px;padding:20px;
+         text-decoration:none;color:var(--txt);position:relative;
+         transition:transform .16s ease, box-shadow .16s ease, border-color .16s ease}
+  .fcard:hover{transform:translateY(-3px);box-shadow:0 10px 28px rgba(15,23,42,.09);border-color:#c7d2fe}
+  .fcard .ficon{display:inline-flex;width:38px;height:38px;border-radius:9px;align-items:center;justify-content:center;
+                background:#eff6ff;color:var(--brand);margin-bottom:12px}
+  .fcard .ficon svg{width:20px;height:20px}
+  .fcard b{display:block;font-size:16px;margin-bottom:6px}
+  .fcard p{margin:0;color:var(--muted);font-size:14px;line-height:1.7;min-height:48px}
+  .fcard em{position:absolute;top:16px;right:16px;font-style:normal;font-size:12px;color:#94a3b8;
+            background:#f8fafc;border:1px solid var(--line);border-radius:999px;padding:1px 8px}
+
+  .l-foot{max-width:1000px;margin:20px auto 60px;padding:24px;border-top:1px solid var(--line);
+          display:flex;justify-content:space-between;gap:12px;color:var(--muted);font-size:13px}
+  .l-foot a{color:var(--brand);text-decoration:none}
+
+  /* 关于页 */
+  .doc{max-width:800px;margin:0 auto;padding:56px 24px}
+  .doc h1{font-size:34px;margin:0 0 18px}
+  .doc h2{font-size:20px;margin:32px 0 10px}
+  .doc p{line-height:1.9;color:#374151;margin:0 0 12px}
+  .doc a{color:var(--brand);text-decoration:none}
+
+  /* 工作台外壳 */
+  #app-shell{height:100vh;display:grid;grid-template-columns:180px 1fr;grid-template-rows:auto 1fr;
+             grid-template-areas:"nav head" "nav main"}
+  #sidenav{grid-area:nav;display:flex;flex-direction:column;gap:2px;padding:14px 10px;
+           background:#fff;border-right:1px solid var(--line);overflow:auto}
+  #sidenav .snav{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:7px;
+                 color:#4b5563;text-decoration:none;font-size:14px;cursor:pointer;transition:.15s}
+  #sidenav .snav:hover{background:#f1f3f5;color:var(--txt)}
+  #sidenav .snav.on{background:#eff6ff;color:var(--brand);font-weight:600}
+  #sidenav .sicon{display:inline-flex;width:18px;height:18px;color:currentColor}
+  #sidenav .sicon svg{width:18px;height:18px}
+  #sidenav .snav-group{font-size:12px;color:#9ca3af;padding:12px 10px 4px}
+  #sidenav .subnav{padding-left:34px;font-size:13px}
+  #sidenav .grow{flex:1}
+  #app-shell > header{grid-area:head;height:auto}
+  #app-shell > main{grid-area:main;height:auto;min-height:0;grid-template-columns:minmax(360px,45%) 1fr}
+  /* 工作台按钮加大 */
+  #app-shell header button{height:40px;padding:0 16px;font-size:14px}
+  #app-shell header button.primary{font-weight:600}
+  #app-shell header select{height:40px;font-size:14px}
+
+  @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .hero{animation:fadeUp .45s ease both}
+
+  @media (max-width:1100px){
+    .cards{grid-template-columns:repeat(2,1fr)}
+  }
+  @media (max-width:980px){
+    #app-shell{grid-template-columns:1fr;grid-template-rows:auto auto 1fr;
+               grid-template-areas:"nav" "head" "main"}
+    #sidenav{flex-direction:row;overflow:auto;border-right:none;border-bottom:1px solid var(--line);
+             gap:4px;padding:8px 10px;align-items:center}
+    #sidenav .snav-group,#sidenav .grow,#sidenav a[href="#/"]{display:none}
+    #sidenav .snav{white-space:nowrap;padding:7px 10px}
+    #sidenav .subnav{padding-left:10px}
+    #app-shell > main{display:block;height:auto}
+    #viewer{height:60vh}
+    #side{height:auto}
+    .l-head{padding:12px 18px;gap:12px}
+    .l-nav{display:none}
+    .hero{padding:36px 16px 20px;overflow-x:hidden}
+    .hero h1{font-size:27px;letter-spacing:-.3px}
+    .hero-sub{font-size:14px;line-height:1.75;padding:0 2px}
+    .hero-actions{flex-direction:column;align-items:stretch;padding:0 24px}
+    .hero-actions .btn{width:100%}
+    .steps{grid-template-columns:1fr;padding:0 14px;gap:10px}
+    .cards{grid-template-columns:1fr}
+    .features{padding:0 14px;margin-top:36px}
+    .features h2{font-size:21px}
+    .l-foot{flex-direction:column;padding:16px}
+    .doc{padding:32px 16px}
+    .doc h1{font-size:26px}
+  }
+</style>
 </head>
 <body>
+<div id="landing-view">
+  <header class="l-head">
+    <div class="l-logo">Paper<span>Brief</span></div>
+    <nav class="l-nav">
+      <a href="#/" class="on">首页</a>
+      <a href="#/app/brief">工作台</a>
+      <a href="#/about">关于</a>
+    </nav>
+    <a class="btn btn-primary" href="#/app/brief">开始使用</a>
+  </header>
+
+  <section class="hero">
+    <h1>读论文，出汇报，<br/>每条信息都有源</h1>
+    <p class="hero-sub">上传一篇 PDF，生成带页码锚点的汇报包：摘要、贡献、结果、图表、讲稿。<br/>点任意结论旁的页码，左侧原文立刻跳转并高亮。</p>
+    <div class="hero-actions">
+      <a class="btn btn-primary btn-lg" href="#/app/brief">开始使用</a>
+      <button class="btn btn-lg" id="landingDemo">看演示</button>
+    </div>
+    <div class="hero-note">无需注册 · 支持 39 篇官方测试论文 · 大模型失败自动降级</div>
+  </section>
+
+  <section class="steps">
+    <div class="step"><span class="step-n">1</span><b>选择论文</b><p>从内置论文库选一篇，或上传自己的 PDF。</p></div>
+    <div class="step"><span class="step-n">2</span><b>生成汇报包</b><p>摘要、贡献、结果、图表、术语、讲稿一次出齐。</p></div>
+    <div class="step"><span class="step-n">3</span><b>点锚点核对</b><p>每条结论都带页码，点一下跳回原文并高亮。</p></div>
+  </section>
+
+  <section class="features">
+    <h2>一个工作台，覆盖读论文的每个环节</h2>
+    <div class="cards">
+      <a class="fcard" href="#/app/brief"><span class="ficon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5h12a2 2 0 0 1 2 2v12H6a2 2 0 0 1-2-2V5z"/><path d="M8 9h8M8 13h6"/></svg></span><b>汇报包</b><p>组会材料一次生成：摘要、贡献、结果、术语、讲稿。</p><em>核心</em></a>
+      <a class="fcard" href="#/app/ask"><span class="ficon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5h16v11H9l-5 4V5z"/><path d="M8 10h8"/></svg></span><b>带锚点问答</b><p>只依据原文回答，每条答案都标页码，可点回核对。</p><em>核心</em></a>
+      <a class="fcard" href="#/app/cmp"><span class="ficon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="7" height="16" rx="1"/><rect x="14" y="4" width="7" height="16" rx="1"/></svg></span><b>多篇对比</b><p>两篇论文的结论分别标 [A]/[B] 页码，避免张冠李戴。</p><em>进阶</em></a>
+      <a class="fcard" href="#/app/tools/translate"><span class="ficon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/></svg></span><b>译文</b><p>按页翻译，公式保留原文，每行可跳回原文。</p><em>进阶</em></a>
+      <a class="fcard" href="#/app/tools/graph"><span class="ficon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="2.5"/><circle cx="5" cy="6" r="2"/><circle cx="19" cy="7" r="2"/><circle cx="7" cy="19" r="2"/><circle cx="18" cy="18" r="2"/><path d="M10 11 6.5 7.5M14 11l3.5-3M13.8 13.2 8 17.5M14 13.5 16.8 17"/></svg></span><b>引文图谱</b><p>从参考文献构建引文网络，找奠基工作与脉络。</p><em>进阶</em></a>
+      <a class="fcard" href="#/app/tools/chart"><span class="ficon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span><b>实验图表</b><p>上传 CSV，生成论文级图表与中文图注。</p><em>进阶</em></a>
+    </div>
+  </section>
+
+  <footer class="l-foot">
+    <span>PaperBrief v0.14.0 · 每条结论都能点回原文</span>
+    <span><a href="#/about">技术说明与已知限制</a> · 第九届传智杯 · 科研小助手 Agent</span>
+  </footer>
+</div>
+
+<div id="about-view" style="display:none">
+  <header class="l-head">
+    <div class="l-logo">Paper<span>Brief</span></div>
+    <nav class="l-nav"><a href="#/">首页</a><a href="#/app/brief">工作台</a><a href="#/about" class="on">关于</a></nav>
+    <a class="btn btn-primary" href="#/app/brief">开始使用</a>
+  </header>
+  <section class="doc">
+    <h1>关于 PaperBrief</h1>
+    <p>PaperBrief 把 PDF 解析成带坐标的文档结构，再基于结构生成汇报材料；材料中的每条结论都带页码锚点，点击即可回到原文核对。它不是"让模型写一段总结"，而是"让每句话都能被你验证"。</p>
+    <h2>技术栈</h2>
+    <p>Python 标准库 HTTP 服务（ThreadingHTTPServer）· PyMuPDF 解析 · BM25 + bge-small 向量重排 · DeepSeek / 本地 Ollama 双后端 · Crossref 引文 · arXiv 推荐 · 单文件前端（无构建）。</p>
+    <h2>已知限制</h2>
+    <p>扫描版 PDF 无 OCR；部分论文参考文献排版特殊时解析条数会偏少（已给出提示）；arXiv 从国内访问偶发超时，已做重试、缓存与友好提示；本地 3B 模型质量弱于云端，定位为离线演示。</p>
+    <p><a href="https://github.com/Skr433/paperbrief">代码仓库</a> · <a href="#/app/brief">进入工作台</a></p>
+  </section>
+  <footer class="l-foot"><span>PaperBrief v0.14.0</span><span>第九届传智杯 · 赛道 10040</span></footer>
+</div>
+
+<div id="app-shell" style="display:none">
+<nav id="sidenav">
+  <a class="snav" data-route="/app/brief"><span class="sicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5h12a2 2 0 0 1 2 2v12H6a2 2 0 0 1-2-2V5z"/><path d="M8 9h8M8 13h6"/></svg></span>汇报包</a>
+  <a class="snav" data-route="/app/ask"><span class="sicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5h16v11H9l-5 4V5z"/><path d="M8 10h8"/></svg></span>问答</a>
+  <a class="snav" data-route="/app/struct"><span class="sicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 4h16M4 10h16M4 16h10M4 22h7"/></svg></span>解析</a>
+  <a class="snav" data-route="/app/cmp"><span class="sicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="7" height="16" rx="1"/><rect x="14" y="4" width="7" height="16" rx="1"/></svg></span>多篇对比</a>
+  <div class="snav-group">工具</div>
+  <a class="snav subnav" data-route="/app/tools/translate">译文</a>
+  <a class="snav subnav" data-route="/app/tools/graph">引文图谱</a>
+  <a class="snav subnav" data-route="/app/tools/chart">实验图表</a>
+  <a class="snav subnav" data-route="/app/tools/arxiv">推荐</a>
+  <div class="grow"></div>
+  <a class="snav" href="#/">← 返回首页</a>
+</nav>
+
 <header>
   <div class="logo">Paper<span>Brief</span></div>
-  <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.13.6</span></div>
+  <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.0</span></div>
   <div class="grow"></div>
   <select id="lib"><option>正在加载论文库…</option></select>
   <button id="btnParse" class="primary">解析并生成</button>
@@ -223,13 +429,6 @@
   </section>
 
   <section id="side">
-    <div class="tabs">
-      <div class="tab on" data-tab="brief">汇报包</div>
-      <div class="tab" data-tab="ask">问答</div>
-      <div class="tab" data-tab="struct">解析</div>
-      <div class="tab" data-tab="cmp">多篇对比</div>
-      <div class="tab" data-tab="tools">工具</div>
-    </div>
     <div id="notice" style="display:none"></div>
 
     <div id="tab-brief">
@@ -374,6 +573,7 @@
     </div>
   </section>
 </main>
+</div>
 
 <div id="transPop"></div>
 
@@ -1168,8 +1368,7 @@ $("#btnDemo").onclick = async () => {
   const d = await parseCurrent();
   if(!d) return;
   await doBrief();
-  const tab = document.querySelector('.tab[data-tab="brief"]');
-  if(tab) tab.click();
+  location.hash = "#/app/brief";
 };
 
 $("#btnMd").onclick = () => {
@@ -1442,6 +1641,84 @@ document.querySelectorAll(".tab").forEach(t=>{
   };
 });
 
+
+/* ================= 站点路由（hash） ================= */
+const ROUTE_TAB = {
+  "/app/brief": "brief", "/app/ask": "ask", "/app/struct": "struct", "/app/cmp": "cmp"
+};
+const ROUTE_TOOL = {
+  "/app/tools/translate": "tr", "/app/tools/graph": "graph",
+  "/app/tools/chart": "chart", "/app/tools/arxiv": "arxiv"
+};
+
+function currentPath(){
+  const h = location.hash.replace(/^#/, "");
+  return h || "/";
+}
+
+function showView(which){
+  const landing = document.getElementById("landing-view");
+  const about = document.getElementById("about-view");
+  const shell = document.getElementById("app-shell");
+  if(!landing || !about || !shell) return;
+  landing.style.display = which === "landing" ? "block" : "none";
+  about.style.display = which === "about" ? "block" : "none";
+  shell.style.display = which === "app" ? "grid" : "none";
+  document.body.style.overflow = which === "app" ? "hidden" : "auto";
+  window.scrollTo(0, 0);
+}
+
+function setActiveNav(path){
+  document.querySelectorAll("#sidenav .snav").forEach(a=>{
+    a.classList.toggle("on", a.dataset.route === path);
+  });
+}
+
+function showPanel(kind, sub){
+  const panels = ["brief","ask","struct","cmp","tools"];
+  panels.forEach(k=>{ const el = document.getElementById("tab-"+k); if(el) el.style.display = "none"; });
+  if(kind === "tools"){
+    const box = document.getElementById("tab-tools");
+    if(box) box.style.display = "block";
+    if(sub) showSub(sub);
+  } else {
+    const el = document.getElementById("tab-"+kind);
+    if(el) el.style.display = "block";
+  }
+}
+
+function route(){
+  const p = currentPath();
+  if(p === "/"){ showView("landing"); return; }
+  if(p === "/about"){ showView("about"); return; }
+  showView("app");
+  if(ROUTE_TAB[p]){
+    setActiveNav(p); showPanel(ROUTE_TAB[p]);
+  } else if(ROUTE_TOOL[p]){
+    setActiveNav(p); showPanel("tools", ROUTE_TOOL[p]);
+  } else {
+    location.hash = "#/app/brief";
+  }
+}
+
+window.addEventListener("hashchange", route);
+
+function initNav(){
+  document.querySelectorAll("#sidenav .snav[data-route]").forEach(a=>{
+    a.onclick = ()=>{ location.hash = "#" + a.dataset.route; };
+  });
+  const demo = document.getElementById("landingDemo");
+  if(demo){
+    demo.onclick = ()=>{
+      location.hash = "#/app/brief";
+      setTimeout(()=>{ const b = document.getElementById("btnDemo"); if(b) b.click(); }, 500);
+    };
+  }
+}
+
+initNav();
+route();
+
 loadLibrary().then(()=>{
   // 深链接（录屏/截图/评审演示用）
   //   ?auto=文件名&brief=1                自动解析 + 生成汇报包
@@ -1453,17 +1730,18 @@ loadLibrary().then(()=>{
   if(auto){
     const sel = $("#lib");
     for(const o of sel.options){ if(o.value === auto) sel.value = auto; }
+    location.hash = "#/app/brief";
     $("#btnParse").click();
     setTimeout(async ()=>{
       if(p.get("brief")!=="0") await doBrief();
       const tab = p.get("tab");
       const sub = p.get("sub");
       if(tab === "ask"){
-        document.querySelector('.tab[data-tab="ask"]').click();
+        location.hash = "#/app/ask";
         const q = p.get("q");
         if(q){ $("#q").value = q; doAsk(); }
       } else if(tab === "tools"){
-        document.querySelector('.tab[data-tab="tools"]').click();
+        location.hash = "#/app/tools/" + (sub || "translate");
         if(sub) showSub(sub);
       } else if(p.get("anchor") === "1" && S.brief && S.brief.contributions && S.brief.contributions.length){
         const c = S.brief.contributions[0];
