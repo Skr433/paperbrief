@@ -122,26 +122,26 @@ def build_svg(header, rows, x, ys, kind: str = "line", title: str = "") -> tuple
 
     parts = [f"<svg xmlns='http://www.w3.org/2000/svg' width='{W}' height='{H}' viewBox='0 0 {W} {H}' "
              f"font-family='-apple-system,Segoe UI,Microsoft YaHei,sans-serif'>",
-             f"<rect width='{W}' height='{H}' fill='#0b1220' rx='10'/>"]
+             f"<rect width='{W}' height='{H}' fill='#ffffff' rx='8'/>"]
     # 网格 + y 轴刻度
     for i in range(5):
         f = i / 4
         yv = ymin + f * (ymax - ymin)
         yy = sy(yv)
-        parts.append(f"<line x1='{L}' y1='{yy:.1f}' x2='{W-R}' y2='{yy:.1f}' stroke='#1e293b' stroke-width='1'/>")
-        parts.append(f"<text x='{L-8}' y='{yy+4:.1f}' fill='#94a3b8' font-size='11' text-anchor='end'>{yv:.3g}</text>")
+        parts.append(f"<line x1='{L}' y1='{yy:.1f}' x2='{W-R}' y2='{yy:.1f}' stroke='#e5e7eb' stroke-width='1'/>")
+        parts.append(f"<text x='{L-8}' y='{yy+4:.1f}' fill='#6b7280' font-size='11' text-anchor='end'>{yv:.3g}</text>")
     # x 轴刻度
     for i in range(6):
         f = i / 5
         xv = xmin + f * (xmax - xmin)
         xx = sx(xv)
         label = f"{xv:.3g}"
-        parts.append(f"<text x='{xx:.1f}' y='{T+ph+18}' fill='#94a3b8' font-size='11' text-anchor='middle'>{label}</text>")
-    parts.append(f"<line x1='{L}' y1='{T+ph}' x2='{W-R}' y2='{T+ph}' stroke='#334155'/>")
-    parts.append(f"<line x1='{L}' y1='{T}' x2='{L}' y2='{T+ph}' stroke='#334155'/>")
-    parts.append(f"<text x='{L+pw/2:.0f}' y='{H-16}' fill='#cbd5e1' font-size='12' text-anchor='middle'>{x}</text>")
+        parts.append(f"<text x='{xx:.1f}' y='{T+ph+18}' fill='#6b7280' font-size='11' text-anchor='middle'>{label}</text>")
+    parts.append(f"<line x1='{L}' y1='{T+ph}' x2='{W-R}' y2='{T+ph}' stroke='#cbd5e1'/>")
+    parts.append(f"<line x1='{L}' y1='{T}' x2='{L}' y2='{T+ph}' stroke='#cbd5e1'/>")
+    parts.append(f"<text x='{L+pw/2:.0f}' y='{H-16}' fill='#374151' font-size='12' text-anchor='middle'>{x}</text>")
     if title:
-        parts.append(f"<text x='{W/2:.0f}' y='22' fill='#e5e7eb' font-size='13' text-anchor='middle'>{title}</text>")
+        parts.append(f"<text x='{W/2:.0f}' y='22' fill='#111827' font-size='13' text-anchor='middle'>{title}</text>")
 
     for s in series:
         pts = sorted(s["pts"], key=lambda p: p[0])
@@ -166,7 +166,7 @@ def build_svg(header, rows, x, ys, kind: str = "line", title: str = "") -> tuple
     lx = L + 6
     for s in series:
         parts.append(f"<rect x='{lx}' y='{T-24}' width='10' height='10' fill='{s['color']}' rx='2'/>")
-        parts.append(f"<text x='{lx+14}' y='{T-15}' fill='#cbd5e1' font-size='11'>{s['name']}</text>")
+        parts.append(f"<text x='{lx+14}' y='{T-15}' fill='#374151' font-size='11'>{s['name']}</text>")
         lx += 24 + len(s["name"]) * 7
     parts.append("</svg>")
     return "\n".join(parts), _summary(header, rows, x, ys)

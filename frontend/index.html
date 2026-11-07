@@ -105,11 +105,64 @@
     .notice{font-size:12px;padding:8px 10px}
   }
 </style>
+
+<style id="theme-light">
+  /* de-slop: 浅色学术风；颜色/字号/圆角见 DESIGN.md */
+  :root{--bg:#f6f7f9;--panel:#ffffff;--panel2:#f1f3f5;--line:#e5e7eb;--txt:#1f2937;
+        --muted:#6b7280;--brand:#2563eb;--brand2:#2563eb;--ok:#059669;--warn:#b45309;
+        --hl:rgba(250,204,21,.45)}
+  body{background:var(--bg);color:var(--txt)}
+  header{background:#fff;border-bottom:1px solid var(--line)}
+  .logo{color:#111827;letter-spacing:0}
+  .logo span{color:var(--brand)}
+  .sub{color:var(--muted)}
+  select,input,button{background:#fff;border:1px solid var(--line);color:var(--txt);border-radius:6px}
+  select:focus,input:focus{border-color:var(--brand)}
+  button.primary{background:var(--brand);border:none;color:#fff}
+  button.primary:hover{background:#1d4ed8;filter:none}
+  .card{background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:none}
+  .card h3{color:#111827;font-weight:600;font-size:14px;gap:6px}
+  .pill{background:var(--panel2);border:1px solid var(--line);color:var(--muted);border-radius:999px;font-size:12px}
+  .tabs{position:static;background:transparent;border:none;gap:2px;padding:4px 0 0;margin-bottom:10px}
+  .tab{border:none;background:transparent;border-radius:0;border-bottom:2px solid transparent;
+       color:var(--muted);padding:8px 12px}
+  .tab:hover{color:var(--txt)}
+  .tab.on{color:var(--txt);font-weight:600;background:transparent;border-bottom-color:var(--brand)}
+  .subtabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin:0 0 12px}
+  .subtab{font-size:12px;color:var(--muted);padding:6px 10px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+  .subtab.on{color:var(--txt);border-bottom-color:var(--brand)}
+  #viewer{background:#eef0f3;border-right:1px solid var(--line)}
+  .pager{background:#eef0f3;border-bottom:1px solid var(--line)}
+  .pager button{background:#fff;border-color:var(--line)}
+  #pagewrap img{box-shadow:0 2px 12px rgba(0,0,0,.10);border-radius:2px}
+  .hl{background:var(--hl);border:1px solid rgba(217,119,6,.55);border-radius:2px}
+  #side{background:transparent}
+  .item{background:#fff;border:1px solid var(--line);border-radius:6px;cursor:pointer}
+  .item:hover{background:#f7f8fa}
+  .anchor{background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:4px}
+  .ans{background:#f8fafc;border-left:3px solid var(--brand);color:var(--txt)}
+  .notice{background:#fef3c7;border:1px solid #fcd34d;color:#92400e}
+  .notice b{color:#78350f}
+  .drop{border:1px dashed #cbd5e1;background:#fafbfc}
+  .drop:hover,.drop.over{border-color:var(--brand);background:#eff6ff}
+  .dz-title{color:var(--txt)}
+  .sidebar-hint{color:var(--muted)}
+  .empty{color:var(--muted)}
+  #transPop{background:#fff;border:1px solid var(--line);box-shadow:0 10px 28px rgba(0,0,0,.12)}
+  #transPop h4{color:#111827}
+  #transPop .en{color:var(--muted)}
+  #transPop .zh{color:var(--txt)}
+  details.adv{color:var(--muted)}
+  details.adv summary{color:var(--brand)}
+  .glegend span{background:#fff;border:1px solid var(--line);color:var(--muted)}
+  #gTip{background:#fff;border:1px solid var(--line);color:var(--txt);box-shadow:0 8px 24px rgba(0,0,0,.12)}
+  #graphDetail{color:var(--txt)}
+</style>
 </head>
 <body>
 <header>
   <div class="logo">Paper<span>Brief</span></div>
-  <div class="sub">论文汇报包助手 · 每条要点可点回原文 · <span style="color:#22d3ee;font-weight:600">v0.12.4</span></div>
+  <div class="sub">论文汇报包助手 · 每条要点可点回原文 · <span style="color:#22d3ee;font-weight:600">v0.13.0</span></div>
   <div class="grow"></div>
   <select id="lib"><option>正在加载论文库…</option></select>
   <button id="btnParse" class="primary">解析并生成汇报包</button>
@@ -137,24 +190,14 @@
   <section id="side">
     <div class="tabs">
       <div class="tab on" data-tab="brief">汇报包</div>
-      <div class="tab" data-tab="ask">问答（带锚点）</div>
-      <div class="tab" data-tab="struct">解析结构</div>
+      <div class="tab" data-tab="ask">问答</div>
+      <div class="tab" data-tab="struct">解析</div>
       <div class="tab" data-tab="cmp">多篇对比</div>
-      <div class="tab" data-tab="tr">译文</div>
-      <div class="tab" data-tab="graph">引文图谱</div>
-      <div class="tab" data-tab="chart">实验图表</div>
-      <div class="tab" data-tab="arxiv">推荐</div>
+      <div class="tab" data-tab="tools">工具</div>
     </div>
     <div id="notice" style="display:none"></div>
 
     <div id="tab-brief">
-      <div class="card"><h3>使用步骤</h3>
-        <div class="sidebar-hint">
-          ① 选择论文，点右上角「<b>解析并生成汇报包</b>」；<br/>
-          ② 页面同时给出原文与汇报材料（摘要、关键贡献、关键结果、图表、术语、讲稿）；<br/>
-          ③ 点任意 <span class="anchor">p.3</span> 页码，左侧跳回原文并高亮；只想读原文可点「仅解析」。
-        </div>
-      </div>
       <div id="brief"></div>
     </div>
 
@@ -177,7 +220,7 @@
     <div id="tab-cmp" style="display:none">
       <div class="card">
         <h3>两篇论文对比（官方多篇问题）</h3>
-        <div class="sidebar-hint">先解析当前论文（A），再选择一篇论文（B），输入对比问题；结论会分别标注 A、B 两篇的页码，点页码可跳回原文核对。</div>
+        <div class="sidebar-hint">选择另一篇论文，对比结论分别标注 A / B 页码。</div>
         <div class="askrow" style="margin-top:8px">
           <select id="cmpB" style="flex:0 0 46%"></select>
           <input id="cmpQ" placeholder="例：BERT 与 Transformer Encoder 的承袭关系？" />
@@ -187,10 +230,17 @@
       <div id="cmpOut"></div>
     </div>
 
-    <div id="tab-tr" style="display:none">
+    <div id="tab-tools" style="display:none">
+      <div class="subtabs">
+        <div class="subtab on" data-sub="tr">译文</div>
+        <div class="subtab" data-sub="graph">引文图谱</div>
+        <div class="subtab" data-sub="chart">实验图表</div>
+        <div class="subtab" data-sub="arxiv">推荐</div>
+      </div>
+      <div id="tab-tr" style="display:none">
       <div class="card">
         <h3>整页翻译（原文 / 译文对照）</h3>
-        <div class="sidebar-hint">按当前页翻译；公式与符号保留原文；点击任意一行可跳回原文核对。</div>
+        <div class="sidebar-hint">按当前页翻译；公式与符号保留原文。</div>
         <div class="askrow" style="margin-top:8px">
           <button id="trPrev">← 上一页</button>
           <span id="trPage" class="muted" style="align-self:center">- / -</span>
@@ -236,7 +286,7 @@
     <div id="tab-chart" style="display:none">
       <div class="card">
         <h3>实验数据 → 论文级图表 + 图注</h3>
-        <div class="sidebar-hint">上传实验数据（CSV），30 秒生成可直接放进论文的图表与中文图注。</div>
+        <div class="sidebar-hint">上传 CSV，生成图表与图注。</div>
         <div id="dropZone" class="drop">
           <div class="dz-title">把 CSV 拖到这里，或点击选择文件</div>
           <div class="dz-sub">支持 Excel 导出的 CSV（UTF-8 / GBK）</div>
@@ -269,7 +319,7 @@
     <div id="tab-arxiv" style="display:none">
       <div class="card">
         <h3>arXiv 追踪与推荐</h3>
-        <div class="sidebar-hint">根据当前论文自动找最近发表的相关工作，也可以按关键词搜索；给出代码链接的会标记「有代码」。</div>
+        <div class="sidebar-hint">按当前论文找近 18 个月的新工作，也可按关键词搜索；有代码的会标出。</div>
         <div class="askrow" style="margin-top:8px;flex-wrap:wrap">
           <input id="arxivQ" placeholder="关键词，例如 retrieval augmented generation" style="flex:1 1 100%" />
           <button id="btnArxivSearch">搜索</button>
@@ -278,6 +328,8 @@
       </div>
       <div id="arxivList"></div>
     </div>
+
+        </div>
 
     <div id="tab-struct" style="display:none">
       <div class="card"><h3>文档结构</h3><div id="docinfo" class="muted">请先解析</div></div>
@@ -323,7 +375,7 @@ function traceChips(trace){
   box.style.cssText = "margin:4px 0 8px;display:flex;flex-wrap:wrap;gap:6px";
   (trace||[]).forEach((s,i)=>{
     const chip = el("span","pill", `${i+1}. ${s.step}${s.detail? " · "+s.detail : ""}${s.ms!=null? " · "+s.ms+"ms":""}`);
-    chip.style.cssText = "font-size:11px;background:#0f172a;border-color:#1e293b;color:#94a3b8";
+    chip.style.cssText = "font-size:12px;background:#f1f3f5;border-color:#e5e7eb;color:#6b7280";
     box.appendChild(chip);
   });
   return box;
@@ -592,7 +644,7 @@ $("#btnChart").onclick = async ()=>{
       const cc = el("div","card");
       const h = el("h3", null, "图注 ");
       const tag = el("span","pill",(r.provider || "AI") + " 生成");
-      tag.style.cssText = "background:#1d4ed822;border-color:#3b82f6;color:#93c5fd;margin-left:6px";
+      tag.style.cssText = "background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8;margin-left:6px";
       h.appendChild(tag); cc.appendChild(h);
       cc.appendChild(el("div","ans", r.caption));
       $("#chartOut").appendChild(cc);
@@ -743,7 +795,7 @@ function renderGraph(g){
   box.innerHTML = "";
   const W = 760, H = 500;
   const svg = gEl("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", height: "460" });
-  svg.style.cssText = "background:#0b1220;border-radius:10px;cursor:grab;display:block;touch-action:none";
+  svg.style.cssText = "background:#ffffff;border:1px solid #e5e7eb;border-radius:8px;cursor:grab;display:block;touch-action:none";
   const vp = gEl("g", {});
   svg.appendChild(vp);
   const pos = forceLayout(g.nodes, g.edges, W, H);
@@ -754,7 +806,7 @@ function renderGraph(g){
     if(!a || !b) return;
     const line = gEl("line", {
       x1: a.x, y1: a.y, x2: b.x, y2: b.y,
-      stroke: e.type === "co-cite" ? "#f59e0b88" : (e.type === "similar" ? "#22d3ee55" : "#334155"),
+      stroke: e.type === "co-cite" ? "#f59e0b" : (e.type === "similar" ? "#93c5fd" : "#cbd5e1"),
       "stroke-width": e.type === "co-cite" ? 1.5 : 1,
       "stroke-dasharray": e.type === "similar" ? "3 3" : ""
     });
@@ -767,8 +819,8 @@ function renderGraph(g){
     const r = nd.is_root ? 16 : Math.min(14, 5 + Math.log10((nd.cited_by || 0) + 1) * 2.4);
     const c = gEl("circle", {
       cx: p.x, cy: p.y, r: r,
-      fill: nd.is_root ? "#22d3ee" : themeColor(nd),
-      stroke: "#0b1220", "stroke-width": 2
+      fill: nd.is_root ? "#2563eb" : themeColor(nd),
+      stroke: "#ffffff", "stroke-width": 2
     });
     c.style.cursor = "pointer";
     c.setAttribute("data-theme", nd.is_root ? "root" : (nd.theme || ""));
@@ -787,13 +839,13 @@ function renderGraph(g){
     if(!nd.is_root){
       const idx = g.nodes.filter(n => !n.is_root).indexOf(nd) + 1;
       const txt = gEl("text", {
-        x: p.x, y: p.y + 3.5, "text-anchor": "middle", "font-size": "10", fill: "#e5e7eb"
+        x: p.x, y: p.y + 3.5, "text-anchor": "middle", "font-size": "10", fill: "#1f2937"
       });
       txt.textContent = String(idx);
       txt.style.pointerEvents = "none";
       vp.appendChild(txt);
     } else {
-      const txt = gEl("text", { x: p.x, y: p.y + 3.5, "text-anchor": "middle", "font-size": "10", fill: "#0b1220" });
+      const txt = gEl("text", { x: p.x, y: p.y + 3.5, "text-anchor": "middle", "font-size": "10", fill: "#ffffff" });
       txt.textContent = "本文";
       txt.style.pointerEvents = "none";
       vp.appendChild(txt);
@@ -885,7 +937,7 @@ $("#btnReview").onclick = async ()=>{
     const c = el("div","card");
     const h = el("h3", null, "自动综述 ");
     const tag = el("span","pill",(r.provider || "AI") + " · 基于引用标题");
-    tag.style.cssText = "background:#1d4ed822;border-color:#3b82f6;color:#93c5fd;margin-left:6px";
+    tag.style.cssText = "background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8;margin-left:6px";
     h.appendChild(tag); c.appendChild(h);
     if(r.trace) c.appendChild(traceChips(r.trace));
     c.appendChild(el("div","ans", r.review||"(空)"));
@@ -993,7 +1045,7 @@ function renderCompare(r){
   const tag = el("span","pill", isAI ? ((r.provider || "AI") + " 生成 · 分别标注 [A]/[B]") : "抽取式");
   tag.style.cssText = isAI ? "background:#1d4ed822;border-color:#3b82f6;color:#93c5fd;margin-left:6px" : "margin-left:6px";
   h.appendChild(tag);
-  if(r.llm_error){ const w=el("span","pill","AI 不可用，已回退"); w.style.cssText="background:#3a2f0b;border-color:#b45309;color:#fde68a;margin-left:6px"; h.appendChild(w); }
+  if(r.llm_error){ const w=el("span","pill","AI 不可用，已回退"); w.style.cssText="background:#fef3c7;border-color:#fcd34d;color:#92400e;margin-left:6px"; h.appendChild(w); }
   c.appendChild(h);
   if(r.trace) c.appendChild(traceChips(r.trace));
   const ans = el("div","ans", r.answer || "(空)"); c.appendChild(ans);
@@ -1161,7 +1213,7 @@ function renderBrief(b){
   // AI 摘要（DeepSeek 生成，仅基于原文证据；失败不显示）
   if (b.ai_summary) {
     const ai = el("div","card");
-    ai.innerHTML = `<h3>AI 摘要 <span class="pill" style="background:#1d4ed822;border-color:#3b82f6;color:#93c5fd">${b.provider || "AI"} 生成 · 依据原文</span></h3>`;
+    ai.innerHTML = `<h3>AI 摘要 <span class="pill" style="background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8">${b.provider || "AI"} 生成 · 依据原文</span></h3>`;
     const body = el("div","item", b.ai_summary);
     body.style.whiteSpace = "pre-wrap";
     body.style.cursor = "default";
@@ -1270,7 +1322,7 @@ async function doAsk(){
   const title = el("h3", null, isAI ? "回答 " : "回答 ");
   if (isAI) {
     const tag = el("span","pill",(r.provider || "AI") + " 生成 · 依据原文");
-    tag.style.cssText = "background:#1d4ed822;border-color:#3b82f6;color:#93c5fd;margin-left:6px";
+    tag.style.cssText = "background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8;margin-left:6px";
     title.appendChild(tag);
   } else {
     const tag = el("span","pill","抽取式");
@@ -1308,14 +1360,30 @@ SAMPLES.forEach(s=>{
   $("#samples").appendChild(d);
 });
 
+const SUB_TABS = ["tr","graph","chart","arxiv"];
+let CURRENT_SUB = "tr";
+
+function showSub(name){
+  CURRENT_SUB = name;
+  SUB_TABS.forEach(k => { const p = $("#tab-"+k); if(p) p.style.display = (k===name ? "block" : "none"); });
+  document.querySelectorAll(".subtab").forEach(s => s.classList.toggle("on", s.dataset.sub === name));
+  if(name === "tr"){ loadPageText(S.page||1); }
+  if(name === "graph" && !S.graph){ loadGraph(false); }
+  if(name === "chart"){ ensureChartSample(); }
+}
+
+document.querySelectorAll(".subtab").forEach(s=>{
+  s.onclick = ()=>{ showSub(s.dataset.sub); };
+});
+
 document.querySelectorAll(".tab").forEach(t=>{
   t.onclick = ()=>{
     document.querySelectorAll(".tab").forEach(x=>x.classList.remove("on"));
     t.classList.add("on");
-    ["brief","ask","struct","cmp","tr","graph","chart","arxiv"].forEach(k=> $("#tab-"+k).style.display = (k===t.dataset.tab?"block":"none"));
-    if(t.dataset.tab==="tr"){ loadPageText(S.page||1); }
-    if(t.dataset.tab==="graph" && !S.graph){ loadGraph(false); }
-    if(t.dataset.tab==="chart"){ ensureChartSample(); }
+    ["brief","ask","struct","cmp","tools"].forEach(k=>{
+      const p = $("#tab-"+k); if(p) p.style.display = (k===t.dataset.tab ? "block" : "none");
+    });
+    if(t.dataset.tab === "tools"){ showSub(CURRENT_SUB); }
   };
 });
 
