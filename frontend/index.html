@@ -1256,7 +1256,7 @@ function renderBrief(b){
     root.appendChild(ai);
   } else if (b.ai_error) {
     const err = el("div","card");
-    err.innerHTML = `<h3>AI 摘要</h3><div class="muted" style="font-size:12px">暂不可用（${b.ai_error.slice(0,80)}），已自动回退为抽取式材料。</div>`;
+    err.innerHTML = `<h3>AI 摘要</h3><div class="muted" style="font-size:13px">AI 暂时不可用，已回退为抽取式材料。</div>`;
     root.appendChild(err);
   }
 
