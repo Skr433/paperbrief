@@ -719,6 +719,7 @@ class Handler(SimpleHTTPRequestHandler):
                     except Exception as e:
                         brief["ai_error"] = str(e)[:200]
                         _step(steps, "AI 摘要失败，保留抽取式", t1, str(e)[:60])
+                brief["provider"] = _provider_label()
                 brief["trace"] = steps
                 if q.get("format", [""])[0] == "md":
                     md = brief_to_markdown(brief).encode("utf-8")
@@ -781,6 +782,7 @@ class Handler(SimpleHTTPRequestHandler):
                 else:
                     t2 = time.time()
                     _step(steps, "结构化抽取", t2, res.get("mode", ""))
+                res["provider"] = _provider_label()
                 res["trace"] = steps
                 return self._send(*_json(res))
             if u.path == "/api/compare":
@@ -810,7 +812,8 @@ class Handler(SimpleHTTPRequestHandler):
                     {"label": "B", "key": k2, "title": p2["meta"]["title"], "authors": p2["meta"].get("authors", ""),
                      "pages": p2["meta"]["pages"], "anchors": r2.get("anchors", [])},
                 ]
-                res = {"mode": "compare", "answer": "", "docs": docs, "question": question}
+                res = {"mode": "compare", "answer": "", "docs": docs, "question": question,
+                       "provider": _provider_label()}
                 if llm.available() and (docs[0]["anchors"] or docs[1]["anchors"]):
                     t1 = time.time()
                     try:

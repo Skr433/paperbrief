@@ -109,7 +109,7 @@
 <body>
 <header>
   <div class="logo">Paper<span>Brief</span></div>
-  <div class="sub">论文汇报包助手 · 每条要点可点回原文 · <span style="color:#22d3ee;font-weight:600">v0.12.3</span></div>
+  <div class="sub">论文汇报包助手 · 每条要点可点回原文 · <span style="color:#22d3ee;font-weight:600">v0.12.4</span></div>
   <div class="grow"></div>
   <select id="lib"><option>正在加载论文库…</option></select>
   <button id="btnParse" class="primary">解析并生成汇报包</button>
@@ -591,7 +591,7 @@ $("#btnChart").onclick = async ()=>{
     if(r.caption){
       const cc = el("div","card");
       const h = el("h3", null, "图注 ");
-      const tag = el("span","pill","DeepSeek 生成");
+      const tag = el("span","pill",(r.provider || "AI") + " 生成");
       tag.style.cssText = "background:#1d4ed822;border-color:#3b82f6;color:#93c5fd;margin-left:6px";
       h.appendChild(tag); cc.appendChild(h);
       cc.appendChild(el("div","ans", r.caption));
@@ -884,7 +884,7 @@ $("#btnReview").onclick = async ()=>{
     renderGraph(r.graph);
     const c = el("div","card");
     const h = el("h3", null, "自动综述 ");
-    const tag = el("span","pill","DeepSeek · 基于引用标题");
+    const tag = el("span","pill",(r.provider || "AI") + " · 基于引用标题");
     tag.style.cssText = "background:#1d4ed822;border-color:#3b82f6;color:#93c5fd;margin-left:6px";
     h.appendChild(tag); c.appendChild(h);
     if(r.trace) c.appendChild(traceChips(r.trace));
@@ -990,7 +990,7 @@ function renderCompare(r){
   const c = el("div","card");
   const isAI = (r.mode||"").indexOf("llm") === 0;
   const h = el("h3", null, "对比结论 ");
-  const tag = el("span","pill", isAI ? "DeepSeek 生成 · 分别标注 [A]/[B]" : "抽取式");
+  const tag = el("span","pill", isAI ? ((r.provider || "AI") + " 生成 · 分别标注 [A]/[B]") : "抽取式");
   tag.style.cssText = isAI ? "background:#1d4ed822;border-color:#3b82f6;color:#93c5fd;margin-left:6px" : "margin-left:6px";
   h.appendChild(tag);
   if(r.llm_error){ const w=el("span","pill","AI 不可用，已回退"); w.style.cssText="background:#3a2f0b;border-color:#b45309;color:#fde68a;margin-left:6px"; h.appendChild(w); }
@@ -1161,7 +1161,7 @@ function renderBrief(b){
   // AI 摘要（DeepSeek 生成，仅基于原文证据；失败不显示）
   if (b.ai_summary) {
     const ai = el("div","card");
-    ai.innerHTML = `<h3>AI 摘要 <span class="pill" style="background:#1d4ed822;border-color:#3b82f6;color:#93c5fd">DeepSeek 生成 · 依据原文</span></h3>`;
+    ai.innerHTML = `<h3>AI 摘要 <span class="pill" style="background:#1d4ed822;border-color:#3b82f6;color:#93c5fd">${b.provider || "AI"} 生成 · 依据原文</span></h3>`;
     const body = el("div","item", b.ai_summary);
     body.style.whiteSpace = "pre-wrap";
     body.style.cursor = "default";
@@ -1269,7 +1269,7 @@ async function doAsk(){
   const isAI = (r.mode||"").indexOf("llm") === 0;
   const title = el("h3", null, isAI ? "回答 " : "回答 ");
   if (isAI) {
-    const tag = el("span","pill","DeepSeek 生成 · 依据原文");
+    const tag = el("span","pill",(r.provider || "AI") + " 生成 · 依据原文");
     tag.style.cssText = "background:#1d4ed822;border-color:#3b82f6;color:#93c5fd;margin-left:6px";
     title.appendChild(tag);
   } else {
