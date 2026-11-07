@@ -1,0 +1,21 @@
+#!/bin/sh
+# 拒绝提交 >20KB 的单文件（约 5000 token）。现有超标文件在白名单，提交后应拆分。
+LIMIT=20480
+ALLOW="frontend/index.html backend/server.py"
+
+fail=0
+for f in $(git diff --cached --name-only --diff-filter=ACMR); do
+  case "$f" in
+    data/*|*.pdf|*.zip|*.png|*.jpg|*.jpeg|*.gif|*.mp4|*.docx|*.xlsx|*.ppt*) continue ;;
+  esac
+  [ -f "$f" ] || continue
+  size=$(wc -c < "$f")
+  if [ "$size" -gt "$LIMIT" ]; then
+    case " $ALLOW " in
+      *" $f "*) continue ;;
+    esac
+    echo "拒绝提交：$f 大小 $size 字节（> $LIMIT，约 5000 token）。请按功能拆分成多个文件后再提交。"
+    fail=1
+  fi
+done
+exit $fail

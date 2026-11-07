@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# 运行期数据（解析缓存、页面图、上传、译文/图谱缓存）
+data/
+
+# 离线依赖（体积大，不入库）
+_pylibs/
+
+# 打包产物
+*.zip
+*.pyz
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 测试集 PDF 不入库（体积大，README 说明来源）
+*.pdf

@@ -1,0 +1,11 @@
+# 统一换行：脚本/钩子必须 LF，避免 bash 报 $'\r'
+* text=auto eol=lf
+*.sh text eol=lf
+*.bat text eol=crlf
+.githooks/* text eol=lf
+*.pdf binary
+*.png binary
+*.jpg binary
+*.mp4 binary
+*.docx binary
+*.xlsx binary

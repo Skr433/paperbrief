@@ -1,0 +1,1300 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>PaperBrief · 论文汇报包助手</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root{
+    --bg:#0f1216; --panel:#161b22; --panel2:#1c2330; --line:#2a3441;
+    --txt:#e6edf3; --muted:#8b98a9; --brand:#3b82f6; --brand2:#22d3ee;
+    --ok:#34d399; --warn:#fbbf24; --hl:rgba(250,204,21,.32);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.6 "Microsoft YaHei","Segoe UI",system-ui,sans-serif}
+  header{display:flex;align-items:center;gap:14px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+  .logo{font-weight:700;font-size:18px;letter-spacing:.5px}
+  .logo span{color:var(--brand2)}
+  .sub{color:var(--muted);font-size:12px}
+  select,input,button{font:inherit;color:var(--txt);background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 10px;outline:none}
+  select{min-width:320px}
+  button{cursor:pointer;transition:.15s}
+  button:hover{border-color:var(--brand)}
+  button.primary{background:linear-gradient(135deg,#2563eb,#0891b2);border:none}
+  button.primary:hover{filter:brightness(1.1)}
+  .grow{flex:1}
+  main{display:grid;grid-template-columns:minmax(420px,46%) 1fr;height:calc(100vh - 58px)}
+  #viewer{overflow:auto;background:#0b0e12;border-right:1px solid var(--line);position:relative;padding:0 12px 16px;text-align:center}
+  #pagewrap{position:relative;display:inline-block;margin-top:6px}
+  #pagewrap img{max-width:100%;display:block;box-shadow:0 8px 30px rgba(0,0,0,.5);border-radius:4px;margin:0 auto}
+  .hl{position:absolute;background:var(--hl);border:1px solid rgba(250,204,21,.8);border-radius:3px;pointer-events:none}
+  .pager{position:sticky;top:0;display:flex;gap:8px;align-items:center;justify-content:center;padding:8px 0;margin:0 -12px 6px;background:#0b0e12;border-bottom:1px solid var(--line);z-index:5}
+  .pager button{padding:4px 10px}
+  #zoomLabel{min-width:52px;color:var(--muted);font-size:12px}
+  #side{overflow:auto;padding:14px 16px}
+  .tabs{display:flex;gap:8px;margin-bottom:12px;position:sticky;top:-14px;background:var(--bg);padding:8px 0;z-index:5}
+  .tab{padding:6px 12px;border-radius:8px;border:1px solid var(--line);color:var(--muted);cursor:pointer}
+  .tab.on{color:#fff;border-color:var(--brand);background:#1d4ed822}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+  .card h3{margin:0 0 8px;font-size:14px;color:var(--brand2);display:flex;align-items:center;gap:8px}
+  .meta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+  .pill{background:var(--panel2);border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:2px 10px;font-size:12px}
+  .pill b{color:var(--txt)}
+  .item{padding:8px 10px;border-left:2px solid var(--line);margin:6px 0;background:#121821;border-radius:0 8px 8px 0;cursor:pointer}
+  .item:hover{border-left-color:var(--brand);background:#151d2a}
+  .anchor{display:inline-block;font-size:11px;color:#93c5fd;background:#1e3a8a33;border:1px solid #1e40af66;border-radius:6px;padding:0 6px;margin-left:6px;cursor:pointer}
+  .muted{color:var(--muted)}
+  .ok{color:var(--ok)} .warn{color:var(--warn)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{border-bottom:1px solid var(--line);padding:6px 4px;text-align:left}
+  th{color:var(--muted);font-weight:500}
+  .askrow{display:flex;gap:8px;margin-bottom:10px}
+  .askrow input{flex:1}
+  .ans{background:#121821;border:1px solid var(--line);border-radius:10px;padding:10px 12px;white-space:pre-wrap;margin-bottom:10px}
+  .empty{color:var(--muted);text-align:center;padding:40px 10px}
+  .sidebar-hint{color:var(--muted);font-size:12px}
+  .drop{outline:2px dashed #2563eb66;outline-offset:-8px}
+  .outline{max-height:220px;overflow:auto}
+  .outline div{cursor:pointer;padding:2px 4px;border-radius:4px}
+  .outline div:hover{background:#1c2330}
+  .notice{background:#3a2f0b;border:1px solid #b45309;color:#fde68a;border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:13px;line-height:1.7}
+  .notice b{color:#fff}
+  #graphWrap{position:relative;margin-top:6px}
+  #gTip{position:absolute;pointer-events:none;background:#0b1220;border:1px solid #1e293b;color:#e5e7eb;font-size:12px;padding:6px 8px;border-radius:8px;max-width:320px;display:none;z-index:6;line-height:1.5;box-shadow:0 6px 20px #0008}
+  #graphDetail{margin-top:8px;font-size:13px;color:#cbd5e1;line-height:1.7}
+  .glegend{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+  .glegend span{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#94a3b8;cursor:pointer;background:#0f172a;border:1px solid #1e293b;border-radius:999px;padding:3px 8px}
+  .glegend span.off{opacity:.35}
+  .glegend i{width:10px;height:10px;border-radius:50%;display:inline-block}
+  .drop{border:2px dashed #334155;border-radius:12px;padding:20px 16px;text-align:center;cursor:pointer;margin-top:10px;transition:all .15s;background:#0f172a}
+  .drop:hover,.drop.over{border-color:#3b82f6;background:#111c33}
+  .dz-title{color:#e5e7eb;font-size:14px;margin-bottom:4px}
+  .dz-sub{color:#94a3b8;font-size:12px}
+  details.adv{margin-top:8px;font-size:12px;color:#94a3b8}
+  details.adv summary{cursor:pointer;color:#93c5fd}
+  #transPop{position:fixed;right:16px;bottom:16px;width:min(420px,92vw);max-height:55vh;overflow:auto;background:#0b1220;border:1px solid #1e293b;border-radius:12px;padding:12px 14px;box-shadow:0 8px 30px #0008;display:none;z-index:99}
+  #transPop h4{margin:0 0 6px;font-size:13px;color:#93c5fd}
+  #transPop .en{color:#94a3b8;font-size:12px;line-height:1.6;margin-bottom:8px}
+  #transPop .zh{color:#e5e7eb;font-size:13px;line-height:1.7}
+  @media (max-width:600px){ .tr-wrap table{min-width:0} .tr-wrap th{display:none} .tr-wrap td{display:block;width:100%} }
+  .tr-wrap{overflow:auto;max-height:62vh;margin-top:6px}
+  .tr-wrap table{min-width:560px;font-size:12px}
+  .notice .anchor{border-color:#b45309;color:#fcd34d;background:#78350f55;margin-left:8px}
+
+  /* ---------- 移动端适配（<=980px）：单列堆叠，避免三栏挤出屏幕 ---------- */
+  @media (max-width: 980px){
+    html,body{overflow-x:hidden}
+    header{flex-wrap:wrap;gap:6px;padding:8px 10px}
+    .logo{font-size:16px}
+    .sub{display:none}
+    #lib{min-width:0;flex:1 1 100%;font-size:12px;padding:6px 8px}
+    header button{padding:5px 8px;font-size:12px}
+    main{display:block;height:auto}
+    #viewer{height:64vh;border-right:none;border-bottom:1px solid var(--line);padding:0 8px 10px}
+    #side{padding:10px 10px 24px}
+    .tabs{position:static;margin:0 0 8px;padding:6px 0;flex-wrap:wrap;gap:6px}
+    .tab{padding:5px 10px;font-size:12px}
+    .pager{gap:4px;padding:6px 0;margin:0 -8px 6px;flex-wrap:wrap}
+    .pager button{padding:3px 7px;font-size:12px}
+    #zoomLabel{min-width:40px;font-size:11px}
+    .card{padding:10px}
+    .item{padding:6px 8px;font-size:13px}
+    .askrow{flex-wrap:wrap}
+    .askrow input{flex:1 1 100%}
+    .anchor{font-size:11px}
+    .notice{font-size:12px;padding:8px 10px}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Paper<span>Brief</span></div>
+  <div class="sub">论文汇报包助手 · 每条要点可点回原文 · <span style="color:#22d3ee;font-weight:600">v0.10.6</span></div>
+  <div class="grow"></div>
+  <select id="lib"><option>正在加载论文库…</option></select>
+  <button id="btnParse" class="primary">解析并生成汇报包</button>
+  <button id="btnParseOnly">仅解析</button>
+  <button id="btnDemo">▶ 一键演示</button>
+  <button id="btnMd">导出 Markdown</button>
+  <input type="file" id="file" accept="application/pdf" style="display:none" />
+  <button id="btnUpload">上传 PDF</button>
+</header>
+
+<main>
+  <section id="viewer">
+    <div class="pager">
+      <button id="prev">← 上一页</button>
+      <span id="pageno" class="muted">- / -</span>
+      <button id="next">下一页 →</button>
+      <button id="zoomOut">－</button>
+      <span id="zoomLabel">100%</span>
+      <button id="zoomIn">＋</button>
+      <button id="zoomFit">适合宽度</button>
+    </div>
+    <div id="pagewrap"><div class="empty">先选择论文并点「解析」，原文与汇报材料会显示在这里</div></div>
+  </section>
+
+  <section id="side">
+    <div class="tabs">
+      <div class="tab on" data-tab="brief">汇报包</div>
+      <div class="tab" data-tab="ask">问答（带锚点）</div>
+      <div class="tab" data-tab="struct">解析结构</div>
+      <div class="tab" data-tab="cmp">多篇对比</div>
+      <div class="tab" data-tab="tr">译文</div>
+      <div class="tab" data-tab="graph">引文图谱</div>
+      <div class="tab" data-tab="chart">实验图表</div>
+      <div class="tab" data-tab="arxiv">推荐</div>
+    </div>
+    <div id="notice" style="display:none"></div>
+
+    <div id="tab-brief">
+      <div class="card"><h3>使用步骤</h3>
+        <div class="sidebar-hint">
+          ① 选择论文，点右上角「<b>解析并生成汇报包</b>」；<br/>
+          ② 页面同时给出原文与汇报材料（摘要、关键贡献、关键结果、图表、术语、讲稿）；<br/>
+          ③ 点任意 <span class="anchor">p.3</span> 页码，左侧跳回原文并高亮；只想读原文可点「仅解析」。
+        </div>
+      </div>
+      <div id="brief"></div>
+    </div>
+
+    <div id="tab-ask" style="display:none">
+      <div class="card">
+        <h3>对论文提问</h3>
+        <div class="askrow">
+          <input id="q" placeholder="例：第 6 作者是谁，在哪个机构工作？" />
+          <button id="btnAsk" class="primary">提问</button>
+        </div>
+        <div class="sidebar-hint">回答只依据论文原文，并标注页码；点击页码可跳回原文核对。</div>
+      </div>
+      <div id="answers"></div>
+      <div class="card">
+        <h3>官方示例问题（可直接演示）</h3>
+        <div id="samples"></div>
+      </div>
+    </div>
+
+    <div id="tab-cmp" style="display:none">
+      <div class="card">
+        <h3>两篇论文对比（官方多篇问题）</h3>
+        <div class="sidebar-hint">先解析当前论文（A），再选择一篇论文（B），输入对比问题；结论会分别标注 A、B 两篇的页码，点页码可跳回原文核对。</div>
+        <div class="askrow" style="margin-top:8px">
+          <select id="cmpB" style="flex:0 0 46%"></select>
+          <input id="cmpQ" placeholder="例：BERT 与 Transformer Encoder 的承袭关系？" />
+          <button id="btnCmp" class="primary">对比</button>
+        </div>
+      </div>
+      <div id="cmpOut"></div>
+    </div>
+
+    <div id="tab-tr" style="display:none">
+      <div class="card">
+        <h3>整页翻译（原文 / 译文对照）</h3>
+        <div class="sidebar-hint">按当前页翻译；公式与符号保留原文；点击任意一行可跳回原文核对。</div>
+        <div class="askrow" style="margin-top:8px">
+          <button id="trPrev">← 上一页</button>
+          <span id="trPage" class="muted" style="align-self:center">- / -</span>
+          <button id="trNext">下一页 →</button>
+          <button id="btnTr" class="primary">翻译本页</button>
+        </div>
+        <label class="sidebar-hint" style="display:flex;gap:6px;align-items:center;margin-top:8px"><input type="checkbox" id="trAuto" checked /> 翻页自动翻译（已译过的页走缓存，秒出）</label>
+      </div>
+      <div id="trTable" class="card muted">解析后加载…</div>
+    </div>
+
+    <div id="tab-graph" style="display:none">
+      <div class="card">
+        <h3>引文图谱与自动综述</h3>
+        <div class="sidebar-hint">从论文的参考文献自动构建引文网络，找出领域中的奠基性工作，并生成一段中文综述。首次生成约 5–10 秒。</div>
+        <div class="askrow" style="margin-top:8px">
+          <button id="btnGraph" class="primary">生成图谱</button>
+          <button id="btnGraphRefresh">重新抓取</button>
+          <button id="btnReview">生成综述</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>图谱 <span class="sidebar-hint">（滚轮缩放 · 拖拽平移 · 悬停看标题 · 点击看详情）</span></h3>
+        <div class="askrow" style="margin:6px 0">
+          <button id="gZoomIn">放大</button>
+          <button id="gZoomOut">缩小</button>
+          <button id="gReset">重置视图</button>
+        </div>
+        <div class="glegend" id="gLegend"></div>
+        <div id="graphWrap">
+          <div id="graphSvg" class="muted">尚未生成</div>
+          <div id="gTip"></div>
+        </div>
+        <div id="graphDetail"></div>
+      </div>
+      <div id="reviewBox"></div>
+      <div class="card">
+        <h3>参考文献（按 PageRank 排序）</h3>
+        <div id="graphList" class="muted">-</div>
+      </div>
+    </div>
+
+    <div id="tab-chart" style="display:none">
+      <div class="card">
+        <h3>实验数据 → 论文级图表 + 图注</h3>
+        <div class="sidebar-hint">上传实验数据（CSV），30 秒生成可直接放进论文的图表与中文图注。</div>
+        <div id="dropZone" class="drop">
+          <div class="dz-title">把 CSV 拖到这里，或点击选择文件</div>
+          <div class="dz-sub">支持 Excel 导出的 CSV（UTF-8 / GBK）</div>
+        </div>
+        <input type="file" id="csvFile" accept=".csv,.tsv,.txt" style="display:none" />
+        <div class="askrow" style="margin-top:10px;flex-wrap:wrap">
+          <span id="dataState" class="pill">未载入数据</span>
+          <button id="btnCsvSample">用示例数据</button>
+          <button id="btnCsvFormat">CSV 格式示例</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>绘图设置</h3>
+        <div class="askrow" style="flex-wrap:wrap;margin-top:6px">
+          <label class="sidebar-hint">横轴 <select id="chartX" style="min-width:120px"></select></label>
+          <label class="sidebar-hint">图型
+            <select id="chartKind" style="min-width:100px">
+              <option value="line">折线</option>
+              <option value="bar">柱状</option>
+              <option value="scatter">散点</option>
+            </select>
+          </label>
+          <button id="btnChart" class="primary">生成图表</button>
+        </div>
+        <div id="chartYs" class="sidebar-hint" style="margin-top:8px">纵轴（可多选，默认全选数值列）</div>
+      </div>
+      <div id="chartOut"></div>
+    </div>
+
+    <div id="tab-arxiv" style="display:none">
+      <div class="card">
+        <h3>arXiv 追踪与推荐</h3>
+        <div class="sidebar-hint">根据当前论文自动找最近发表的相关工作，也可以按关键词搜索；给出代码链接的会标记「有代码」。</div>
+        <div class="askrow" style="margin-top:8px;flex-wrap:wrap">
+          <input id="arxivQ" placeholder="关键词，例如 retrieval augmented generation" style="flex:1 1 100%" />
+          <button id="btnArxivSearch">搜索</button>
+          <button id="btnArxivRec" class="primary">推荐相关</button>
+        </div>
+      </div>
+      <div id="arxivList"></div>
+    </div>
+
+    <div id="tab-struct" style="display:none">
+      <div class="card"><h3>文档结构</h3><div id="docinfo" class="muted">请先解析</div></div>
+      <div class="card"><h3>章节导航</h3><div id="outline" class="outline"></div></div>
+      <div class="card"><h3>引用双向跳转</h3><div id="cites" class="muted">解析后加载…</div></div>
+      <div class="card"><h3>重复检测</h3><div id="dup" class="muted">-</div></div>
+    </div>
+  </section>
+</main>
+
+<div id="transPop"></div>
+
+<script>
+const S = { key:null, doc:null, brief:null, page:1, pages:0, scale:2, zoom:1 };
+const $ = s => document.querySelector(s);
+const el = (t, cls, txt) => { const d=document.createElement(t); if(cls) d.className=cls; if(txt!=null) d.textContent=txt; return d; };
+
+const SAMPLES = [
+  "这篇论文的第 6 作者是谁，在哪个公司或机构工作？",
+  "Adam 优化器的超参数 β1 和 β2 分别设置成了多少？",
+  "训练 Base 模型使用了多少块 GPU，具体是什么型号？",
+  "Transformer (big) 在 English-to-German 上的 BLEU 分数是多少？",
+  "请列出论文中引用 Layer Normalization 的参考文献。",
+];
+
+async function api(path, opts={}) {
+  const r = await fetch(path, opts);
+  if (!r.ok) throw new Error(await r.text());
+  const ct = r.headers.get("content-type")||"";
+  return ct.includes("json") ? r.json() : r.text();
+}
+
+
+function traceChips(trace){
+  const box = el("div");
+  box.style.cssText = "margin:4px 0 8px;display:flex;flex-wrap:wrap;gap:6px";
+  (trace||[]).forEach((s,i)=>{
+    const chip = el("span","pill", `${i+1}. ${s.step}${s.detail? " · "+s.detail : ""}${s.ms!=null? " · "+s.ms+"ms":""}`);
+    chip.style.cssText = "font-size:11px;background:#0f172a;border-color:#1e293b;color:#94a3b8";
+    box.appendChild(chip);
+  });
+  return box;
+}
+
+async function loadCitations(key){
+  const box = $("#cites"); if(!box) return;
+  box.innerHTML = "加载中…";
+  try{
+    const d = await api("/api/citations?key="+key+"&limit=20");
+    box.innerHTML = "";
+    if(!d.items || !d.items.length){ box.innerHTML = '<span class="muted">未识别到可跳转的引用标记</span>'; return; }
+    box.appendChild(el("div","sidebar-hint", "共 "+d.total_refs+" 条参考文献，"+d.matched+" 条可跳转；点页码跳到原文，点「被引」跳回正文位置。"));
+    d.items.forEach(it=>{
+      const row = el("div","item");
+      const refText = (it.ref.text||"").replace(/\s+/g," ").slice(0,120);
+      row.appendChild(el("div", null, "["+it.n+"] "+refText));
+      const line = el("div");
+      const rb = el("span","anchor","参考文献 p."+it.ref.page);
+      rb.onclick=(e)=>{e.stopPropagation(); jump(it.ref.page, it.ref.bbox);};
+      line.appendChild(rb);
+      it.occurrences.slice(0,4).forEach(o=>{
+        const b = el("span","anchor","被引 p."+o.page);
+        b.onclick=(e)=>{e.stopPropagation(); jump(o.page,o.bbox);};
+        line.appendChild(b);
+      });
+      row.appendChild(line);
+      box.appendChild(row);
+    });
+  }catch(e){ box.innerHTML = '<span class="muted">引用加载失败：'+e.message+'</span>'; }
+}
+
+
+
+// ---- 译文（整页翻译） ----
+const TRANS_CACHE = {};
+async function translateThis(text){
+  const pop = $("#transPop"); if(!pop) return;
+  pop.style.display = "block";
+  pop.innerHTML = '<h4>段落翻译</h4><div class="en"></div><div class="zh">翻译中…</div>';
+  pop.querySelector(".en").textContent = text.slice(0, 320);
+  const close = el("span","anchor","关闭");
+  close.style.cssText = "position:absolute;right:10px;top:8px";
+  close.onclick = ()=>{ pop.style.display="none"; };
+  pop.appendChild(close);
+  if(TRANS_CACHE[text]){ pop.querySelector(".zh").textContent = TRANS_CACHE[text]; return; }
+  if(!S.key){ pop.querySelector(".zh").textContent = "请先解析论文"; return; }
+  try{
+    const r = await api("/api/translate_text", {method:"POST", body:JSON.stringify({key:S.key, text})});
+    const zh = r.zh || (r.error ? "翻译失败：" + r.error : "—");
+    if(r.zh) TRANS_CACHE[text] = r.zh;
+    pop.querySelector(".zh").textContent = zh + (r.cached ? "（缓存）" : "");
+  }catch(e){ pop.querySelector(".zh").textContent = "翻译失败：" + e.message; }
+}
+
+
+
+
+function renderArxiv(items, head, trace, keywords){
+  const box = $("#arxivList"); box.innerHTML = "";
+  if(!items || !items.length){ box.innerHTML = '<div class="card muted">没有结果（可换个关键词）</div>'; return; }
+  const c = el("div","card");
+  c.appendChild(el("h3", null, head));
+  if(trace) c.appendChild(traceChips(trace));
+  if(keywords && keywords.length){
+    const kw = el("div","sidebar-hint","检索词：" + keywords.join(" / "));
+    kw.style.marginBottom = "6px";
+    c.appendChild(kw);
+  }
+  items.forEach(it=>{
+    const d = el("div","item");
+    const a = document.createElement("a");
+    a.href = it.link; a.target = "_blank";
+    a.textContent = it.zh_title || it.title;
+    a.style.cssText = "color:#93c5fd;font-weight:600;text-decoration:none;font-size:13px";
+    d.appendChild(a);
+    if(it.zh_title){
+      const en = el("div","sidebar-hint", it.title);
+      en.style.opacity = "0.7";
+      d.appendChild(en);
+    }
+    const meta = [it.published, (it.authors||[]).join(", ")].filter(Boolean).join(" · ");
+    if(meta) d.appendChild(el("div","sidebar-hint", meta));
+    if(it.venue){
+      const v = el("div","sidebar-hint", "出处：" + it.venue.slice(0, 80));
+      v.style.color = "#6ee7b7";
+      d.appendChild(v);
+    }
+    if(it.tags && it.tags.length){
+      const tagRow = el("div");
+      tagRow.style.cssText = "margin:4px 0";
+      it.tags.forEach(tg=>{
+        const b = el("span","pill",tg);
+        b.style.cssText = "background:#064e3b;border:1px solid #10b981;color:#6ee7b7;margin-right:6px;font-size:11px";
+        if(it.venue) b.title = it.venue;
+        tagRow.appendChild(b);
+      });
+      d.appendChild(tagRow);
+    } else if(it.has_code){
+      const b = el("span","pill","有代码");
+      b.style.cssText = "background:#064e3b;border:1px solid #10b981;color:#6ee7b7;margin:4px 0;display:inline-block;font-size:11px";
+      d.appendChild(b);
+    }
+    if(it.zh_summary){
+      const zh = el("div","muted", it.zh_summary);
+      zh.style.color = "#cbd5e1";
+      d.appendChild(zh);
+    }
+    const enSum = (it.summary || "");
+    if(enSum){
+      d.appendChild(el("div","muted", enSum.slice(0, 220) + (enSum.length > 220 ? "…" : "")));
+    }
+    c.appendChild(d);
+  });
+  box.appendChild(c);
+}
+
+$("#btnArxivRec").onclick = async ()=>{
+  if(!S.key){ $("#arxivList").innerHTML = '<div class="card">请先解析论文</div>'; return; }
+  $("#arxivList").innerHTML = '<div class="card">检索 arXiv…</div>';
+  try{
+    const r = await api("/api/recommend?key=" + S.key);
+    if(r.error){ $("#arxivList").innerHTML = '<div class="card">失败：'+r.error+'</div>'; return; }
+    renderArxiv(r.items, "与「" + (r.title||"").slice(0,40) + "」相关的 arXiv 新论文", r.trace, r.keywords);
+  }catch(e){ $("#arxivList").innerHTML = '<div class="card">失败：'+e.message+'</div>'; }
+};
+
+$("#btnArxivSearch").onclick = async ()=>{
+  const q = $("#arxivQ").value.trim();
+  if(!q){ $("#arxivList").innerHTML = '<div class="card">请输入关键词</div>'; return; }
+  $("#arxivList").innerHTML = '<div class="card">检索 arXiv…</div>';
+  try{
+    const r = await api("/api/arxiv?q=" + encodeURIComponent(q));
+    if(r.error){ $("#arxivList").innerHTML = '<div class="card">失败：'+r.error+'</div>'; return; }
+    renderArxiv(r.items, "搜索：" + q, r.trace);
+  }catch(e){ $("#arxivList").innerHTML = '<div class="card">失败：'+e.message+'</div>'; }
+};
+
+let CSV_INFO = null;
+
+function renderCsvColumns(info){
+  CSV_INFO = info;
+  const xsel = $("#chartX"); xsel.innerHTML = "";
+  (info.columns||[]).forEach(c=>{
+    const o = el("option", null, c.name); o.value = c.name; xsel.appendChild(o);
+  });
+  const numeric = (info.columns||[]).filter(c=>c.numeric).map(c=>c.name);
+  const box = $("#chartYs"); box.innerHTML = "纵轴（可多选，默认前 3 个数值列）：";
+  let shown = 0;
+  numeric.forEach((name)=>{
+    if(name === xsel.value) return;
+    const lab = el("label");
+    lab.style.cssText = "display:inline-flex;align-items:center;gap:4px;margin:4px 10px 0 0;color:#cbd5e1";
+    const cb = document.createElement("input");
+    cb.type = "checkbox"; cb.value = name; cb.checked = shown < 3;
+    lab.appendChild(cb); lab.appendChild(document.createTextNode(name));
+    box.appendChild(lab);
+    shown++;
+  });
+  xsel.onchange = ()=> renderCsvColumns(info);
+}
+
+async function fileToInfo(f){
+  const buf = await f.arrayBuffer();
+  return fetch("/api/csv_upload?name=" + encodeURIComponent(f.name), { method: "POST", body: buf }).then(r => r.json());
+}
+
+function setDataState(info){
+  const s = $("#dataState"); if(!s) return;
+  s.textContent = (info.source === "sample" ? "示例数据" : (info.name || "已上传")) + " · " + info.n_rows + " 行";
+}
+
+async function loadSampleCsv(){
+  const info = await api("/api/csv_sample");
+  info.source = "sample";
+  renderCsvColumns(info);
+  setDataState(info);
+  return info;
+}
+
+async function uploadCsv(f){
+  $("#chartOut").innerHTML = '<div class="card">上传中…</div>';
+  try{
+    const info = await fileToInfo(f);
+    if(info.error){ $("#chartOut").innerHTML = '<div class="card">上传失败：' + info.error + '</div>'; return; }
+    info.source = "file";
+    renderCsvColumns(info);
+    setDataState(info);
+    $("#btnChart").click();
+  }catch(err){ $("#chartOut").innerHTML = '<div class="card">上传失败：' + err.message + '</div>'; }
+}
+
+const _dz = $("#dropZone");
+if(_dz){
+  _dz.onclick = () => $("#csvFile").click();
+  _dz.addEventListener("dragover", e => { e.preventDefault(); _dz.classList.add("over"); });
+  _dz.addEventListener("dragleave", () => _dz.classList.remove("over"));
+  _dz.addEventListener("drop", e => {
+    e.preventDefault(); _dz.classList.remove("over");
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if(f) uploadCsv(f);
+  });
+}
+$("#csvFile").onchange = (e) => { const f = e.target.files && e.target.files[0]; if(f) uploadCsv(f); };
+
+$("#btnCsvSample").onclick = async () => { await loadSampleCsv(); $("#btnChart").click(); };
+$("#btnCsvFormat").onclick = () => {
+  $("#chartOut").innerHTML = '<div class="card"><h3>CSV 格式示例</h3>'
+    + '<pre class="muted" style="white-space:pre-wrap;font-size:12px">epoch,loss,bleu\n1,3.21,12.4\n2,2.64,18.7\n3,2.31,23.1</pre>'
+    + '<div class="sidebar-hint">第一行是表头，至少一列数字；Excel 里“另存为 CSV”即可。</div></div>';
+};
+
+async function ensureChartSample(){
+  if(CSV_INFO){ return; }
+  await loadSampleCsv();
+  if(!S.chartAutoDone){ S.chartAutoDone = true; $("#btnChart").click(); }
+}
+
+$("#btnChart").onclick = async ()=>{
+  if(!CSV_INFO){ await loadSampleCsv(); }
+  const x = $("#chartX").value;
+  const kind = $("#chartKind").value;
+  const ys = Array.from(document.querySelectorAll("#chartYs input:checked")).map(c=>c.value);
+  if(!x){ $("#chartOut").innerHTML = '<div class="card">没有可用的数据列，请先上传 CSV</div>'; return; }
+  if(!ys.length){ $("#chartOut").innerHTML = '<div class="card">请先勾选至少一个纵轴</div>'; return; }
+  $("#chartOut").innerHTML = '<div class="card">生成图表中…</div>';
+  try{
+    const r = await api("/api/chart", {method:"POST", body:JSON.stringify({name:CSV_INFO && CSV_INFO.name, x, ys, kind})});
+    if(r.error){ $("#chartOut").innerHTML = '<div class="card">失败：'+r.error+'</div>'; return; }
+    const c = el("div","card");
+    c.appendChild(el("h3", null, "图表"));
+    if(r.trace) c.appendChild(traceChips(r.trace));
+    const holder = el("div"); holder.innerHTML = r.svg;
+    c.appendChild(holder);
+    $("#chartOut").innerHTML = ""; $("#chartOut").appendChild(c);
+
+    if(r.caption){
+      const cc = el("div","card");
+      const h = el("h3", null, "图注 ");
+      const tag = el("span","pill","DeepSeek 生成");
+      tag.style.cssText = "background:#1d4ed822;border-color:#3b82f6;color:#93c5fd;margin-left:6px";
+      h.appendChild(tag); cc.appendChild(h);
+      cc.appendChild(el("div","ans", r.caption));
+      $("#chartOut").appendChild(cc);
+    }
+    if(r.snippet){
+      const det = el("details","card adv");
+      det.appendChild(el("summary", null, "高级：可复现的 Python 绘图脚本"));
+      const pre = el("pre","muted", r.snippet);
+      pre.style.cssText = "white-space:pre-wrap;font-size:12px;background:#0b1220;border:1px solid #1e293b;border-radius:8px;padding:10px;overflow:auto";
+      det.appendChild(pre);
+      const btn = el("button", null, "复制脚本");
+      btn.onclick = ()=>{ navigator.clipboard.writeText(r.snippet).then(()=>{ btn.textContent="已复制"; }); };
+      det.appendChild(btn);
+      $("#chartOut").appendChild(det);
+    }
+  }catch(e){ $("#chartOut").innerHTML = '<div class="card">失败：'+e.message+'</div>'; }
+};
+
+let GRAPH = null;
+let G_VIEW = { scale: 1, tx: 0, ty: 0 };
+let G_LAYOUT = null;
+let G_THEME_OFF = null;
+const G_SVGNS = "http://www.w3.org/2000/svg";
+
+function gEl(tag, attrs){
+  const e = document.createElementNS(G_SVGNS, tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+}
+
+function forceLayout(nodes, edges, W, H){
+  const cx = W / 2, cy = H / 2;
+  const pos = {};
+  const refs = nodes.filter(n => !n.is_root);
+  refs.forEach((n, i) => {
+    const a = Math.PI * 2 * i / Math.max(1, refs.length);
+    const r = 110 + Math.min(100, i * 3);
+    pos[n.id] = { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a), vx: 0, vy: 0 };
+  });
+  pos["root"] = { x: cx, y: cy, vx: 0, vy: 0 };
+  const ids = Object.keys(pos);
+  const links = (edges || []).filter(e => pos[e.source] && pos[e.target]);
+  for(let it = 0; it < 320; it++){
+    for(let i = 0; i < ids.length; i++){
+      for(let j = i + 1; j < ids.length; j++){
+        const a = pos[ids[i]], b = pos[ids[j]];
+        let dx = b.x - a.x, dy = b.y - a.y, d2 = dx * dx + dy * dy;
+        if(d2 < 1) d2 = 1;
+        const d = Math.sqrt(d2), f = 1900 / d2;
+        const fx = f * dx / d, fy = f * dy / d;
+        a.vx -= fx; a.vy -= fy; b.vx += fx; b.vy += fy;
+      }
+    }
+    links.forEach(e => {
+      const a = pos[e.source], b = pos[e.target];
+      let dx = b.x - a.x, dy = b.y - a.y;
+      const d = Math.sqrt(dx * dx + dy * dy) || 1;
+      const target = e.type === "co-cite" ? 95 : 135;
+      const f = (d - target) * 0.012;
+      const fx = f * dx / d, fy = f * dy / d;
+      a.vx += fx; a.vy += fy; b.vx -= fx; b.vy -= fy;
+    });
+    ids.forEach(id => { const p = pos[id]; p.vx += (cx - p.x) * 0.004; p.vy += (cy - p.y) * 0.004; });
+    ids.forEach(id => { const p = pos[id]; p.x += p.vx * 0.6; p.y += p.vy * 0.6; p.vx *= 0.85; p.vy *= 0.85; });
+  }
+  return pos;
+}
+
+function themeColor(nd){
+  if(!nd || !nd.theme) return "#64748b";
+  const list = (GRAPH && GRAPH.themes) || [];
+  for(const th of list){ if(th.name === nd.theme) return th.color; }
+  return "#64748b";
+}
+
+function applyView(){
+  const vp = document.querySelector("#graphSvg svg g");
+  if(vp) vp.setAttribute("transform", "translate(" + G_VIEW.tx + "," + G_VIEW.ty + ") scale(" + G_VIEW.scale + ")");
+}
+
+function renderLegend(themes){
+  const box = $("#gLegend"); if(!box) return;
+  box.innerHTML = "";
+  (themes || []).forEach(th => {
+    const s = el("span");
+    const dot = el("i"); dot.style.background = th.color || "#64748b";
+    s.appendChild(dot);
+    s.appendChild(document.createTextNode(th.name + " (" + th.count + ")"));
+    s.onclick = () => {
+      G_THEME_OFF = (G_THEME_OFF === th.name) ? null : th.name;
+      applyThemeFilter();
+      renderLegend(themes);
+    };
+    if(G_THEME_OFF === th.name) s.classList.add("off");
+    box.appendChild(s);
+  });
+}
+
+function applyThemeFilter(){
+  const nodes = document.querySelectorAll("#graphSvg svg g circle");
+  const edges = document.querySelectorAll("#graphSvg svg g line");
+  nodes.forEach(c => {
+    const th = c.getAttribute("data-theme") || "";
+    const dim = G_THEME_OFF && th !== G_THEME_OFF && th !== "root";
+    c.style.opacity = dim ? 0.15 : 1;
+  });
+  edges.forEach(l => { l.style.opacity = G_THEME_OFF ? 0.12 : 1; });
+}
+
+function showDetail(nd){
+  const box = $("#graphDetail"); if(!box) return;
+  box.innerHTML = "";
+  const h = el("div", null, (nd.is_root ? "本论文：" : "参考文献：") + (nd.title || ""));
+  h.style.color = "#e5e7eb"; h.style.marginBottom = "4px";
+  box.appendChild(h);
+  const meta = [];
+  if(nd.year) meta.push("年份 " + nd.year);
+  if(nd.cited_by) meta.push("被引 " + nd.cited_by);
+  if(nd.theme) meta.push("主题 " + nd.theme);
+  if(nd.matched) meta.push("Crossref 已匹配");
+  if(meta.length) box.appendChild(el("div", "sidebar-hint", meta.join(" · ")));
+  const row = el("div");
+  if(nd.page){
+    const b = el("span", "anchor", "跳到原文 p." + nd.page);
+    b.onclick = () => jump(nd.page, null);
+    row.appendChild(b);
+  }
+  const tr = el("span", "anchor", "译标题");
+  tr.style.cssText = "border-color:#10b981;color:#6ee7b7;background:#064e3b55";
+  tr.onclick = () => translateThis(nd.title || "");
+  row.appendChild(tr);
+  if(nd.doi){
+    const a = document.createElement("a");
+    a.href = "https://doi.org/" + nd.doi;
+    a.target = "_blank";
+    a.textContent = "DOI";
+    a.style.cssText = "color:#93c5fd;font-size:12px;margin-left:8px";
+    row.appendChild(a);
+  }
+  box.appendChild(row);
+}
+
+function renderGraph(g){
+  GRAPH = g;
+  const box = $("#graphSvg");
+  if(!g || g.error){ box.textContent = (g && g.error) || "生成失败"; return; }
+  if(!g.nodes || !g.nodes.length){ box.textContent = "没有节点"; return; }
+  box.innerHTML = "";
+  const W = 760, H = 500;
+  const svg = gEl("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", height: "460" });
+  svg.style.cssText = "background:#0b1220;border-radius:10px;cursor:grab;display:block;touch-action:none";
+  const vp = gEl("g", {});
+  svg.appendChild(vp);
+  const pos = forceLayout(g.nodes, g.edges, W, H);
+  G_LAYOUT = { W, H, pos };
+
+  (g.edges || []).forEach(e => {
+    const a = pos[e.source], b = pos[e.target];
+    if(!a || !b) return;
+    const line = gEl("line", {
+      x1: a.x, y1: a.y, x2: b.x, y2: b.y,
+      stroke: e.type === "co-cite" ? "#f59e0b88" : (e.type === "similar" ? "#22d3ee55" : "#334155"),
+      "stroke-width": e.type === "co-cite" ? 1.5 : 1,
+      "stroke-dasharray": e.type === "similar" ? "3 3" : ""
+    });
+    vp.appendChild(line);
+  });
+
+  const tip = $("#gTip");
+  (g.nodes || []).forEach(nd => {
+    const p = pos[nd.id]; if(!p) return;
+    const r = nd.is_root ? 16 : Math.min(14, 5 + Math.log10((nd.cited_by || 0) + 1) * 2.4);
+    const c = gEl("circle", {
+      cx: p.x, cy: p.y, r: r,
+      fill: nd.is_root ? "#22d3ee" : themeColor(nd),
+      stroke: "#0b1220", "stroke-width": 2
+    });
+    c.style.cursor = "pointer";
+    c.setAttribute("data-theme", nd.is_root ? "root" : (nd.theme || ""));
+    c.onmouseenter = (ev) => {
+      tip.style.display = "block";
+      tip.textContent = (nd.is_root ? "本论文：" : "") + (nd.title || "") + (nd.year ? "（" + nd.year + "）" : "") + (nd.cited_by ? " 被引 " + nd.cited_by : "");
+    };
+    c.onmousemove = (ev) => {
+      const wrap = $("#graphWrap").getBoundingClientRect();
+      tip.style.left = Math.min(ev.clientX - wrap.left + 12, wrap.width - 300) + "px";
+      tip.style.top = (ev.clientY - wrap.top + 12) + "px";
+    };
+    c.onmouseleave = () => { tip.style.display = "none"; };
+    c.onclick = () => showDetail(nd);
+    vp.appendChild(c);
+    if(!nd.is_root){
+      const idx = g.nodes.filter(n => !n.is_root).indexOf(nd) + 1;
+      const txt = gEl("text", {
+        x: p.x, y: p.y + 3.5, "text-anchor": "middle", "font-size": "10", fill: "#e5e7eb"
+      });
+      txt.textContent = String(idx);
+      txt.style.pointerEvents = "none";
+      vp.appendChild(txt);
+    } else {
+      const txt = gEl("text", { x: p.x, y: p.y + 3.5, "text-anchor": "middle", "font-size": "10", fill: "#0b1220" });
+      txt.textContent = "本文";
+      txt.style.pointerEvents = "none";
+      vp.appendChild(txt);
+    }
+  });
+
+  box.appendChild(svg);
+  G_VIEW = { scale: 1, tx: 0, ty: 0 };
+  applyView();
+  renderLegend(g.themes || []);
+
+  // 滚轮缩放
+  svg.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const rect = svg.getBoundingClientRect();
+    const mx = (e.clientX - rect.left) * W / rect.width;
+    const my = (e.clientY - rect.top) * H / rect.height;
+    const old = G_VIEW.scale;
+    const next = Math.max(0.45, Math.min(3.2, old * Math.exp(-e.deltaY * 0.0012)));
+    G_VIEW.tx = mx - (mx - G_VIEW.tx) * (next / old);
+    G_VIEW.ty = my - (my - G_VIEW.ty) * (next / old);
+    G_VIEW.scale = next;
+    applyView();
+  }, { passive: false });
+
+  // 拖拽平移
+  let dragging = false, lx = 0, ly = 0;
+  svg.addEventListener("mousedown", (e) => { dragging = true; lx = e.clientX; ly = e.clientY; svg.style.cursor = "grabbing"; });
+  window.addEventListener("mousemove", (e) => {
+    if(!dragging) return;
+    G_VIEW.tx += (e.clientX - lx) * W / svg.getBoundingClientRect().width;
+    G_VIEW.ty += (e.clientY - ly) * H / svg.getBoundingClientRect().height;
+    lx = e.clientX; ly = e.clientY;
+    applyView();
+  });
+  window.addEventListener("mouseup", () => { dragging = false; svg.style.cursor = "grab"; });
+}
+
+function renderGraphList(g){
+  const list = $("#graphList"); if(!list) return;
+  list.innerHTML = "";
+  const refs = (g.nodes || []).filter(n => !n.is_root);
+  const tip = el("div", "sidebar-hint",
+    "共 " + (g.matched || 0) + "/" + (g.total_refs || refs.length) + " 条匹配到 Crossref；节点大小=被引数，颜色=主题；虚线=标题相似关联；滚轮缩放、拖拽平移。");
+  list.appendChild(tip);
+  refs.forEach((nd, i) => {
+    const row = el("div", "item");
+    const dot = el("i");
+    dot.style.cssText = "display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;background:" + themeColor(nd);
+    row.appendChild(dot);
+    row.appendChild(document.createTextNode("[" + (i + 1) + "] " + (nd.title || "(未匹配)").slice(0, 100) + (nd.year ? "（" + nd.year + "）" : "") + (nd.cited_by ? " 被引 " + nd.cited_by : "")));
+    if(nd.page){
+      row.appendChild(badge(nd.page, null));
+      row.onclick = () => jump(nd.page, null);
+    }
+    list.appendChild(row);
+  });
+}
+
+function zoomBy(f){
+  G_VIEW.scale = Math.max(0.45, Math.min(3.2, G_VIEW.scale * f));
+  applyView();
+}
+
+async function loadGraph(refresh){
+  if(!S.key) return;
+  $("#graphSvg").innerHTML = "构建中…（首次约 5–10 秒）";
+  try{
+    const g = await api("/api/graph?key="+S.key+(refresh?"&refresh=1":""));
+    GRAPH = g; renderGraph(g); renderGraphList(g);
+    if(g.trace) $("#graphSvg").appendChild(traceChips(g.trace));
+  }catch(e){ $("#graphSvg").textContent = "失败：" + e.message; }
+}
+
+$("#gZoomIn").onclick = () => zoomBy(1.25);
+$("#gZoomOut").onclick = () => zoomBy(0.8);
+$("#gReset").onclick = () => { G_VIEW = { scale: 1, tx: 0, ty: 0 }; applyView(); };
+
+$("#btnGraph").onclick = ()=> loadGraph(false);
+$("#btnGraphRefresh").onclick = ()=> loadGraph(true);
+
+$("#btnReview").onclick = async ()=>{
+  if(!S.key){ $("#reviewBox").innerHTML='<div class="card">请先解析论文</div>'; return; }
+  $("#reviewBox").innerHTML='<div class="card">生成综述中…（约 5–10 秒）</div>';
+  try{
+    const r = await api("/api/review", {method:"POST", body:JSON.stringify({key:S.key})});
+    if(r.error){ $("#reviewBox").innerHTML='<div class="card">失败：'+r.error+'</div>'; renderGraph(r.graph); return; }
+    renderGraph(r.graph);
+    const c = el("div","card");
+    const h = el("h3", null, "自动综述 ");
+    const tag = el("span","pill","DeepSeek · 基于引用标题");
+    tag.style.cssText = "background:#1d4ed822;border-color:#3b82f6;color:#93c5fd;margin-left:6px";
+    h.appendChild(tag); c.appendChild(h);
+    if(r.trace) c.appendChild(traceChips(r.trace));
+    c.appendChild(el("div","ans", r.review||"(空)"));
+    $("#reviewBox").innerHTML=""; $("#reviewBox").appendChild(c);
+  }catch(e){ $("#reviewBox").innerHTML='<div class="card">失败：'+e.message+'</div>'; }
+};
+
+async function loadPageText(page){
+  if(!S.key) return;
+  const box=$("#trTable"); box.innerHTML="加载中…";
+  try{
+    const d = await api("/api/page_text?key="+S.key+"&page="+page);
+    renderPageText(d);
+  }catch(e){ box.innerHTML='<span class="muted">加载失败：'+e.message+'</span>'; }
+}
+
+function renderPageText(d){
+  const box=$("#trTable"); box.innerHTML="";
+  $("#trPage").textContent = d.page+" / "+d.total_pages;
+  box.appendChild(el("div","sidebar-hint","本页 "+d.total+" 段，已译 "+d.translated+" 段；点任意一行跳回原文高亮。"));
+  const wrap=el("div","tr-wrap");
+  const tb=el("table");
+  tb.innerHTML="<tr><th style='width:44%'>原文</th><th>译文</th></tr>";
+  (d.items||[]).forEach(it=>{
+    const tr=el("tr");
+    const td1=el("td",null,it.text.slice(0,400)); td1.style.verticalAlign="top";
+    const td2=el("td",null, it.formula ? "（公式/符号段落，保留原文）" : (it.zh || "—")); td2.style.verticalAlign="top";
+    tr.appendChild(td1); tr.appendChild(td2);
+    tr.onclick=()=>jump(it.page,it.bbox);
+    tb.appendChild(tr);
+  });
+  wrap.appendChild(tb); box.appendChild(wrap);
+}
+
+async function doTranslatePage(){
+  if(!S.key){ $("#trTable").innerHTML='<div class="muted">请先解析论文</div>'; return; }
+  $("#trTable").innerHTML="翻译中…（约 5–15 秒；已译过的页会秒出）";
+  try{
+    const r = await api("/api/translate", {method:"POST", body:JSON.stringify({key:S.key, page:S.page})});
+    renderPageText(r);
+    if(r.error){ $("#trTable").prepend(el("div","sidebar-hint","翻译失败："+r.error+"（其余功能不受影响）")); }
+  }catch(e){ $("#trTable").innerHTML='<span class="muted">翻译失败：'+e.message+'</span>'; }
+}
+$("#btnTr").onclick = doTranslatePage;
+
+async function goPage(delta){
+  const target = S.page + delta;
+  if(target < 1 || target > (S.pages||1)) return;
+  await showPage(target);
+  await loadPageText(S.page);
+  if($("#trAuto") && $("#trAuto").checked) doTranslatePage();
+}
+$("#trPrev").onclick = ()=>goPage(-1);
+$("#trNext").onclick = ()=>goPage(1);
+
+async function loadLibrary(){
+  const d = await api("/api/library");
+  S.libDocs = d.docs || [];
+  const sel = $("#lib"); sel.innerHTML = "";
+  d.docs.forEach(x=>{
+    const o = el("option", null, `${x.name}  (${x.size_kb} KB)`);
+    o.value = x.name; sel.appendChild(o);
+  });
+  const cb = $("#cmpB");
+  if(cb){
+    cb.innerHTML = "";
+    d.docs.forEach(x=>{
+      const o = el("option", null, x.name);
+      o.value = x.name; cb.appendChild(o);
+    });
+    // 默认选第二篇（与第一篇不同）
+    if(cb.options.length > 1) cb.selectedIndex = 1;
+  }
+}
+
+// ---- 多篇对比 ----
+async function jumpDoc(key, page, bbox){
+  if(key !== S.key){
+    const m = await api("/api/meta?key="+key);
+    S.key = key; S.pages = m.meta.pages; S.doc = {title:m.meta.title, file:m.meta.file, pages:m.meta.pages, stats:m.stats, outline:m.outline||[]};
+  }
+  jump(page, bbox);
+}
+
+$("#btnCmp").onclick = async () => {
+  if(!S.key) return $("#cmpOut").innerHTML = '<div class="card">请先在顶部解析「论文 A」</div>';
+  const bName = $("#cmpB").value;
+  const q = $("#cmpQ").value.trim() || "请对比这两篇论文的核心方法与差异。";
+  $("#cmpOut").innerHTML = '<div class="card">对比中…（约 3–8 秒）</div>';
+  try{
+    const bMeta = await api("/api/parse?name="+encodeURIComponent(bName), {method:"POST"});
+    const k2 = bMeta.key;
+    const r = await api("/api/compare", {method:"POST", body:JSON.stringify({k1:S.key, k2, q})});
+    renderCompare(r);
+  }catch(e){
+    $("#cmpOut").innerHTML = '<div class="card">对比失败：'+e.message+'</div>';
+  }
+};
+
+function renderCompare(r){
+  const box = $("#cmpOut"); box.innerHTML = "";
+  const c = el("div","card");
+  const isAI = (r.mode||"").indexOf("llm") === 0;
+  const h = el("h3", null, "对比结论 ");
+  const tag = el("span","pill", isAI ? "DeepSeek 生成 · 分别标注 [A]/[B]" : "抽取式");
+  tag.style.cssText = isAI ? "background:#1d4ed822;border-color:#3b82f6;color:#93c5fd;margin-left:6px" : "margin-left:6px";
+  h.appendChild(tag);
+  if(r.llm_error){ const w=el("span","pill","AI 不可用，已回退"); w.style.cssText="background:#3a2f0b;border-color:#b45309;color:#fde68a;margin-left:6px"; h.appendChild(w); }
+  c.appendChild(h);
+  if(r.trace) c.appendChild(traceChips(r.trace));
+  const ans = el("div","ans", r.answer || "(空)"); c.appendChild(ans);
+  box.appendChild(c);
+
+  (r.docs||[]).forEach(d=>{
+    const card = el("div","card");
+    card.appendChild(el("h3", null, `【${d.label}】${d.title}`));
+    (d.anchors||[]).forEach(a=>{
+      const item = el("div","item", a.text.slice(0,220));
+      const b = el("span","anchor","p."+a.page);
+      b.onclick = (e)=>{ e.stopPropagation(); jumpDoc(d.key, a.page, a.bbox); };
+      item.appendChild(b);
+      const tr = el("span","anchor","译");
+      tr.style.cssText = "border-color:#10b981;color:#6ee7b7;background:#064e3b55";
+      tr.onclick = (e)=>{ e.stopPropagation(); translateThis(a.text); };
+      item.appendChild(tr);
+      item.onclick = ()=>jumpDoc(d.key, a.page, a.bbox);
+      card.appendChild(item);
+    });
+    box.appendChild(card);
+  });
+}
+
+async function parseCurrent(){
+  const name = $("#lib").value;
+  if(!name) return null;
+  $("#brief").innerHTML = '<div class="card">解析中…</div>';
+  $("#notice").style.display = "none";
+  try{
+    const d = await api("/api/parse?name="+encodeURIComponent(name), {method:"POST"});
+    S.key = d.key; S.doc = d.doc; S.pages = d.doc.pages; S.brief = null;
+    S.dupFile = d.duplicate ? d.duplicate.file : null;
+    renderStruct(d);
+    showPage(1);
+    if(d.duplicate) renderDup(d.duplicate); else renderDup(null);
+    loadCitations(d.key);
+    $("#brief").innerHTML = '<div class="card">解析完成，正在整理汇报材料…</div>';
+    return d;
+  }catch(e){ $("#brief").innerHTML = '<div class="card">解析失败：'+e.message+'</div>'; return null; }
+}
+
+async function doBrief(){
+  if(!S.key){ $("#brief").innerHTML = '<div class="card">请先解析一篇论文</div>'; return; }
+  $("#brief").innerHTML = '<div class="card">生成中…</div>';
+  try{
+    S.brief = await api("/api/brief?key="+S.key);
+    renderBrief(S.brief);
+  }catch(e){ $("#brief").innerHTML = '<div class="card">生成失败：'+e.message+'</div>'; }
+}
+
+$("#btnParse").onclick = async () => {
+  const d = await parseCurrent();
+  if(d) await doBrief();
+};
+
+$("#btnParseOnly").onclick = async () => { await parseCurrent(); };
+
+$("#btnDemo").onclick = async () => {
+  await loadLibrary();
+  const opts = Array.from($("#lib").options).map(o => o.value);
+  const pick = opts.find(n => n.indexOf("1706.03762v7") >= 0) || opts[0];
+  if(!pick) return;
+  $("#lib").value = pick;
+  const d = await parseCurrent();
+  if(!d) return;
+  await doBrief();
+  const tab = document.querySelector('.tab[data-tab="brief"]');
+  if(tab) tab.click();
+};
+
+$("#btnMd").onclick = () => {
+  if(!S.key) return;
+  window.open("/api/brief?key="+S.key+"&format=md", "_blank");
+};
+
+$("#btnUpload").onclick = () => $("#file").click();
+$("#file").onchange = async e => {
+  const f = e.target.files[0]; if(!f) return;
+  await api("/api/upload?name="+encodeURIComponent(f.name), {method:"POST", body:f});
+  await loadLibrary();
+  $("#lib").value = f.name;
+};
+
+async function showPage(n, hl){
+  if(!S.key) return;
+  n = Math.min(Math.max(1, n), S.pages || 1);
+  S.page = n;
+  const wrap = $("#pagewrap");
+  wrap.innerHTML = "<img id='pgimg' src='"+`/api/page?key=${S.key}&n=${n}`+"'/>";
+  $("#pageno").textContent = n+" / "+S.pages;
+  document.querySelector("#viewer").scrollTop = 0;
+  const img = $("#pgimg");
+  img.onload = ()=>{
+    applyZoom();
+    if(hl) setTimeout(()=>paintHL(hl), 30);
+  };
+}
+
+// ---- 缩放（视频演示更清晰）
+function applyZoom(){
+  const img = $("#pgimg"); if(!img) return;
+  const vw = document.querySelector("#viewer").clientWidth - 40;
+  const fit = Math.max(240, vw);
+  img.style.maxWidth = "none";
+  img.style.width = Math.round(fit * S.zoom) + "px";
+  $("#zoomLabel").textContent = Math.round(S.zoom*100)+"%";
+}
+$("#zoomIn").onclick  = ()=>{ S.zoom = Math.min(3,   S.zoom + 0.15); applyZoom(); };
+$("#zoomOut").onclick = ()=>{ S.zoom = Math.max(0.5, S.zoom - 0.15); applyZoom(); };
+$("#zoomFit").onclick = ()=>{ S.zoom = 1; applyZoom(); };
+
+function paintHL(bbox){
+  const img = $("#pgimg"); if(!img || !bbox) return;
+  document.querySelectorAll(".hl").forEach(x=>x.remove());
+  // bbox 为 PDF 点坐标；渲染倍率 2 → 图片像素 = 点 * 2；再乘显示缩放 s
+  const s = img.clientWidth / (img.naturalWidth || 1);
+  const d = el("div","hl");
+  d.style.left   = (img.offsetLeft + bbox[0]*2*s) + "px";
+  d.style.top    = (img.offsetTop  + bbox[1]*2*s) + "px";
+  d.style.width  = Math.max(20,(bbox[2]-bbox[0])*2*s) + "px";
+  d.style.height = Math.max(10,(bbox[3]-bbox[1])*2*s) + "px";
+  $("#pagewrap").appendChild(d);
+  d.scrollIntoView({block:"center", behavior:"smooth"});
+}
+
+function jump(page, bbox){ showPage(page, bbox); }
+
+$("#prev").onclick = ()=> showPage(S.page-1);
+$("#next").onclick = ()=> showPage(S.page+1);
+
+const badge = (page,bbox) => {
+  const b = el("span","anchor","p."+page);
+  b.onclick = e => { e.stopPropagation(); jump(page,bbox); };
+  return b;
+};
+const item = (text,page,bbox) => {
+  const d = el("div","item", text);
+  d.onclick = ()=> jump(page,bbox);
+  d.appendChild(badge(page,bbox));
+  const tr = el("span","anchor","译");
+  tr.style.cssText = "border-color:#10b981;color:#6ee7b7;background:#064e3b55";
+  tr.onclick = (e)=>{ e.stopPropagation(); translateThis(text); };
+  d.appendChild(tr);
+  return d;
+};
+
+function renderBrief(b){
+  const m = b.meta, st = b.stats;
+  const root = $("#brief"); root.innerHTML = "";
+  const c0 = el("div","card");
+  c0.innerHTML = `<h3>${m.title||"(未识别标题)"}</h3>
+    <div class="meta">
+      <span class="pill">页数 <b>${m.pages}</b></span>
+      <span class="pill">段落 <b>${st.n_paragraphs}</b></span>
+      <span class="pill">章节 <b>${st.n_sections}</b></span>
+      <span class="pill">图表 <b>${st.n_captions}</b></span>
+      <span class="pill">参考文献 <b>${st.n_references}</b></span>
+      <span class="pill">字符 <b>${st.n_chars}</b></span>
+    </div>
+    <div class="muted" style="font-size:12px">${m.authors||""}</div>`;
+  root.appendChild(c0);
+  if(b.trace) c0.appendChild(traceChips(b.trace));
+
+  // AI 摘要（DeepSeek 生成，仅基于原文证据；失败不显示）
+  if (b.ai_summary) {
+    const ai = el("div","card");
+    ai.innerHTML = `<h3>AI 摘要 <span class="pill" style="background:#1d4ed822;border-color:#3b82f6;color:#93c5fd">DeepSeek 生成 · 依据原文</span></h3>`;
+    const body = el("div","item", b.ai_summary);
+    body.style.whiteSpace = "pre-wrap";
+    body.style.cursor = "default";
+    ai.appendChild(body);
+    root.appendChild(ai);
+  } else if (b.ai_error) {
+    const err = el("div","card");
+    err.innerHTML = `<h3>AI 摘要</h3><div class="muted" style="font-size:12px">暂不可用（${b.ai_error.slice(0,80)}），已自动回退为抽取式材料。</div>`;
+    root.appendChild(err);
+  }
+
+  const sec = (title, node) => { const c = el("div","card"); c.appendChild(el("h3",null,title)); c.appendChild(node); return c; };
+
+  const ab = el("div", null, b.abstract || "（未识别到摘要）");
+  ab.className = "item";
+  ab.onclick = ()=>jump(1, null);
+  root.appendChild(sec("摘要（点击回到首页）", ab));
+
+  const contrib = el("div");
+  b.contributions.forEach(x=>contrib.appendChild(item(x.text, x.page, x.bbox)));
+  root.appendChild(sec("关键贡献（"+b.contributions.length+"）", contrib));
+
+  const met = el("div");
+  b.metrics.forEach(x=>met.appendChild(item(x.text, x.page, x.bbox)));
+  root.appendChild(sec("关键结果", met));
+
+  const figs = el("div");
+  b.figures.forEach(x=>figs.appendChild(item(x.text, x.page, x.bbox)));
+  root.appendChild(sec("关键图表（标题）", figs));
+
+  const lim = el("div");
+  b.limitations.forEach(x=>lim.appendChild(item(x.text, x.page, x.bbox)));
+  root.appendChild(sec("局限与后续", lim));
+
+  const terms = el("div");
+  const tb = el("table");
+  tb.innerHTML = "<tr><th>术语</th><th>次数</th><th>首次出现</th></tr>";
+  b.terms.forEach(t=>{
+    const tr = el("tr");
+    tr.innerHTML = `<td>${t.term}</td><td>${t.count}</td><td><span class="anchor">p.${t.first_page}</span></td>`;
+    tr.querySelector(".anchor").onclick = ()=>jump(t.first_page, null);
+    tb.appendChild(tr);
+  });
+  terms.appendChild(tb);
+  root.appendChild(sec("术语表（高频缩写）", terms));
+
+  const scr = el("div");
+  b.script.forEach(s=>scr.appendChild(item(s.title+"："+s.text, s.page, s.bbox)));
+  root.appendChild(sec("5 分钟讲稿", scr));
+
+  const refs = el("div");
+  b.references_preview.forEach(r=>refs.appendChild(item(r.text, r.page, null)));
+  root.appendChild(sec("参考文献（前 8 条）", refs));
+}
+
+function renderStruct(d){
+  const st = d.doc.stats;
+  $("#docinfo").innerHTML = `<b>${d.doc.title}</b><br/>${d.doc.file}<br/>
+    页数 ${d.doc.pages} · 段落 ${st.n_paragraphs} · 章节 ${st.n_sections} · 图表 ${st.n_captions} · 参考文献 ${st.n_references}`;
+  const o = $("#outline"); o.innerHTML = "";
+  d.doc.outline.forEach(x=>{
+    const div = el("div", null, ("　".repeat(Math.max(0,x.level-1)))+x.title);
+    div.onclick = ()=>jump(x.page, null);
+    o.appendChild(div);
+  });
+}
+
+function renderDup(dup){
+  const d = $("#dup");
+  const n = $("#notice");
+  if(!dup){
+    n.style.display = "none";
+    n.innerHTML = "";
+    d.innerHTML = '<span class="ok">未发现重复论文</span>';
+    return;
+  }
+  n.style.display = "block";
+  n.innerHTML = `⚠ <b>发现内容重复</b>：${dup.file}（相似度 <b>${(dup.similarity*100).toFixed(1)}%</b>）· ` +
+    (dup.newer ? "库中版本更新，<b>建议保留库中版本</b>" : "本次上传版本较新，可覆盖库中版本") +
+    ` <span class="anchor" id="noticeJump">查看该论文</span>`;
+  $("#noticeJump").onclick = goDup;
+  d.innerHTML = `<span class="warn">发现可能重复：</span>${dup.file}<br/>相似度 <b>${(dup.similarity*100).toFixed(1)}%</b> · ` +
+    (dup.newer ? "库中版本更新，建议保留库中版本" : "本次上传版本较新，可覆盖") +
+    ` <span class="anchor">查看该论文</span>`;
+  d.querySelector(".anchor").onclick = goDup;
+}
+
+function goDup(){
+  const sel = $("#lib");
+  const name = (S.dupFile || "");
+  for(const o of sel.options){ if(o.value === name) sel.value = name; }
+  $("#btnParse").click();
+}
+
+// 问答
+$("#btnAsk").onclick = doAsk;
+$("#q").addEventListener("keydown", e=>{ if(e.key==="Enter") doAsk(); });
+async function doAsk(){
+  const q = $("#q").value.trim(); if(!q || !S.key) return;
+  const box = $("#answers");
+  box.innerHTML = '<div class="card">检索中…</div>';
+  const r = await api("/api/ask?key="+S.key, {method:"POST", body:JSON.stringify({q})});
+  box.innerHTML = "";
+  const c = el("div","card");
+  const isAI = (r.mode||"").indexOf("llm") === 0;
+  const title = el("h3", null, isAI ? "回答 " : "回答 ");
+  if (isAI) {
+    const tag = el("span","pill","DeepSeek 生成 · 依据原文");
+    tag.style.cssText = "background:#1d4ed822;border-color:#3b82f6;color:#93c5fd;margin-left:6px";
+    title.appendChild(tag);
+  } else {
+    const tag = el("span","pill","抽取式");
+    tag.style.cssText = "margin-left:6px";
+    title.appendChild(tag);
+  }
+  if (r.llm_error) {
+    const warn = el("span","pill","AI 不可用，已回退");
+    warn.style.cssText = "background:#3a2f0b;border-color:#b45309;color:#fde68a;margin-left:6px";
+    title.appendChild(warn);
+  }
+  c.appendChild(title);
+  if(r.trace) c.appendChild(traceChips(r.trace));
+  c.appendChild(el("div","ans", r.answer||"(空)"));
+  if(r.anchors && r.anchors.length){
+    const t = el("div", null, "证据锚点：");
+    r.anchors.forEach(a=>{
+      const d = el("div","item", a.text.slice(0,200));
+      d.appendChild(badge(a.page, a.bbox));
+      const tr = el("span","anchor","译");
+      tr.style.cssText = "border-color:#10b981;color:#6ee7b7;background:#064e3b55";
+      tr.onclick = (e)=>{ e.stopPropagation(); translateThis(a.text); };
+      d.appendChild(tr);
+      d.onclick = ()=>jump(a.page, a.bbox);
+      t.appendChild(d);
+    });
+    c.appendChild(t);
+  }
+  box.appendChild(c);
+}
+
+SAMPLES.forEach(s=>{
+  const d = el("div","item", s);
+  d.onclick = ()=>{ $("#q").value = s; doAsk(); };
+  $("#samples").appendChild(d);
+});
+
+document.querySelectorAll(".tab").forEach(t=>{
+  t.onclick = ()=>{
+    document.querySelectorAll(".tab").forEach(x=>x.classList.remove("on"));
+    t.classList.add("on");
+    ["brief","ask","struct","cmp","tr","graph","chart","arxiv"].forEach(k=> $("#tab-"+k).style.display = (k===t.dataset.tab?"block":"none"));
+    if(t.dataset.tab==="tr"){ loadPageText(S.page||1); }
+    if(t.dataset.tab==="graph" && !S.graph){ loadGraph(false); }
+    if(t.dataset.tab==="chart"){ ensureChartSample(); }
+  };
+});
+
+loadLibrary().then(()=>{
+  // 深链接：?auto=文件名&brief=1  → 自动解析并生成汇报包（录屏/评审演示用）
+  const p = new URLSearchParams(location.search);
+  const auto = p.get("auto");
+  if(auto){
+    const sel = $("#lib");
+    for(const o of sel.options){ if(o.value === auto) sel.value = auto; }
+    $("#btnParse").click();
+    setTimeout(()=>{ if(p.get("brief")!=="0") doBrief(); }, 900);
+  }
+});
+</script>
+</body>
+</html>
