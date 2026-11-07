@@ -11,6 +11,7 @@ import math
 import re
 
 from pdf_parse import tokens
+import embeddings
 
 # 事实型证据包：数字类问题（参数量/上下文/归一化位置）BM25 常召回不到，
 # 这里按关键词补充候选段落，交给大模型判断。
@@ -25,7 +26,7 @@ FACT_PATTERNS = [
 _FACT_RE = [re.compile(p, re.I) for p in FACT_PATTERNS]
 
 
-def build_evidence(parsed: dict, base_anchors: list[dict], extra: int = 6) -> list[dict]:
+def build_evidence(parsed: dict, base_anchors: list[dict], extra: int = 6, question: str = "") -> list[dict]:
     """在 BM25 结果之外，补充"命中事实关键词"的段落（去重、限量）。"""
     out = list(base_anchors)
     seen = {(a.get("page"), (a.get("text") or "")[:40]) for a in out}
@@ -40,11 +41,24 @@ def build_evidence(parsed: dict, base_anchors: list[dict], extra: int = 6) -> li
         key = (p.get("page"), t[:40])
         if key in seen:
             continue
+        # 数字邻近加权：上下文长度/参数量这类题，真正有用的是“关键词 + 数字”同句
+        low = t.lower()
+        ql = (question or "").lower()
+        if re.search(r"(nctx|context window|context length|parameters?|billion|million)", low) and re.search(r"\d{2,4}", low):
+            hits += 2
+        # 按问题类型定向加权（避免参数量段落挤掉上下文段落）
+        if re.search(r"上下文|context|长度|length|window", ql):
+            if re.search(r"(nctx|context window|context length|context size)", low) and re.search(r"\d{3,4}", low):
+                hits += 8
+        if re.search(r"参数|parameter|规模|billion", ql):
+            if re.search(r"(billion|million|parameters?|参数量)", low) and re.search(r"\d", low):
+                hits += 5
         cands.append((hits, p))
     cands.sort(key=lambda x: (-x[0], x[1]["page"]))
-    for _, p in cands[:extra]:
-        out.append({"page": p["page"], "bbox": p["bbox"], "text": p["text"][:500], "score": 0.5})
-    return out
+    # 证据优先：命中强的段落放前面（否则被下游 top-k 截断时会被丢掉）
+    front = [{"page": p["page"], "bbox": p["bbox"], "text": p["text"][:500], "score": 0.9}
+             for _, p in cands[:extra]]
+    return front + out
 
 
 SYNONYMS = {
@@ -137,7 +151,7 @@ def _sentences(text: str) -> list[str]:
     return [p.strip() for p in parts if p.strip()]
 
 
-def ask(parsed: dict, question: str, topk: int = 3, extra_terms: str = "") -> dict:
+def ask(parsed: dict, question: str, topk: int = 3, extra_terms: str = "", doc_key: str = "") -> dict:
     """返回 {answer, anchors:[{page,bbox,text,score}], mode}。"""
     paras = [p for p in parsed["paragraphs"] if len(p["text"]) > 40]
     ql = question.lower()
@@ -200,9 +214,29 @@ def ask(parsed: dict, question: str, topk: int = 3, extra_terms: str = "") -> di
     scored = [(bm.score(q_tokens, i), i) for i in range(len(paras))]
     scored.sort(reverse=True)
 
+    # 混合检索：BM25 前 40 段 → 向量语义重排（模型不可用时自动跳过）
+    if embeddings.available() and len(paras) > topk:
+        bm_scores = {i: sc for sc, i in scored}
+        pool = [{"page": paras[i]["page"], "bbox": paras[i]["bbox"], "text": paras[i]["text"],
+                 "_idx": i, "score": round(sc, 3)} for sc, i in scored[:20]]
+        query = (question + " " + (extra_terms or "")).strip()
+        reranked = embeddings.rerank(doc_key, query, pool, topk=20)
+        order = [it.get("_idx") for it in reranked if it.get("_idx") is not None]
+        if order:
+            seen, rescored = set(), []
+            for idx in order:
+                if idx in seen:
+                    continue
+                seen.add(idx)
+                rescored.append((bm_scores.get(idx, 0.0), idx))
+            for sc2, i2 in scored:
+                if i2 not in seen:
+                    rescored.append((sc2, i2))
+            scored = rescored
+
     # 只保留与最佳命中分数接近的段落，避免"凑满三条"带进无关证据
     top_score = scored[0][0] if scored else 0.0
-    keep = [(sc, i) for sc, i in scored[:topk] if sc > 0 and sc >= top_score * 0.45]
+    keep = [(sc, i) for sc, i in scored[:topk] if sc > 0 and (top_score == 0 or sc >= top_score * 0.45)]
 
     anchors = []
     answer_bits = []

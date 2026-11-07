@@ -53,6 +53,11 @@ pip install -r requirements.txt >>/tmp/pip.log 2>&1 || {
 }
 python -c "import pymupdf; print('PyMuPDF OK:', pymupdf.__doc__.splitlines()[0])"
 
+step "[5.5/9] 预下载向量模型（可选，失败不影响启动）"
+HF_ENDPOINT="${HF_ENDPOINT:-https://hf-mirror.com}" EMBED_MODEL="BAAI/bge-small-en-v1.5" \
+  "$APP_DIR/.venv/bin/python" -c "from fastembed import TextEmbedding; TextEmbedding(model_name='BAAI/bge-small-en-v1.5'); print('embedding model ready')" \
+  2>/tmp/embed.log || echo "[warn] 向量模型未就绪，检索将退回 BM25（详见 /tmp/embed.log）"
+
 step "[6/9] 写入 .env（已存在则不覆盖）"
 if [ ! -f "$APP_DIR/.env" ]; then
   cat > "$APP_DIR/.env" <<'EOF'
@@ -61,6 +66,8 @@ PAPERBRIEF_PDF_DIR=/opt/paperbrief/pdf
 DEEPSEEK_API_KEY=
 DEEPSEEK_BASE_URL=https://api.deepseek.com
 DEEPSEEK_MODEL=deepseek-chat
+EMBED_MODEL=BAAI/bge-small-en-v1.5
+HF_ENDPOINT=https://hf-mirror.com
 EOF
   echo "    已生成 .env"
 else
@@ -80,6 +87,8 @@ WorkingDirectory=$APP_DIR
 EnvironmentFile=$APP_DIR/.env
 Environment=PYTHONIOENCODING=utf-8
 Environment=PYTHONUTF8=1
+Environment=HF_ENDPOINT=https://hf-mirror.com
+Environment=EMBED_MODEL=BAAI/bge-small-en-v1.5
 ExecStart=$APP_DIR/.venv/bin/python $APP_DIR/backend/server.py
 Restart=always
 RestartSec=3

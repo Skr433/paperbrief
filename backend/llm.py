@@ -24,11 +24,29 @@ def _cfg() -> dict:
     }
 
 
+def _ollama_cfg() -> dict:
+    return {
+        "base": (os.environ.get("OLLAMA_BASE_URL") or "").strip().rstrip("/"),
+        "model": os.environ.get("OLLAMA_MODEL") or "qwen2.5:3b",
+    }
+
+
+def provider() -> str:
+    if _ollama_cfg()["base"]:
+        return "ollama:" + _ollama_cfg()["model"]
+    if _cfg()["key"]:
+        return "deepseek:" + _cfg()["model"]
+    return "none"
+
+
 def available() -> bool:
-    return bool(_cfg()["key"])
+    return bool(_ollama_cfg()["base"] or _cfg()["key"])
 
 
 def chat(messages: list[dict], temperature: float = 0.2, timeout: int = 25, max_tokens: int = 800) -> str:
+    oc = _ollama_cfg()
+    if oc["base"]:
+        return _chat_ollama(messages, oc, temperature, timeout, max_tokens)
     cfg = _cfg()
     if not cfg["key"]:
         raise RuntimeError("DEEPSEEK_API_KEY 未配置")
@@ -281,3 +299,19 @@ def rank_arxiv(title: str, items: list[dict]) -> list[int]:
         if n not in seen:
             order.append(n)
     return order
+
+
+def _chat_ollama(messages: list[dict], oc: dict, temperature: float, timeout: int, max_tokens: int) -> str:
+    """本地 Ollama（/api/chat）。用于完全离线演示，模型由 OLLAMA_MODEL 指定。"""
+    payload = json.dumps({
+        "model": oc["model"], "messages": messages, "stream": False,
+        "options": {"temperature": temperature, "num_predict": max_tokens},
+    }).encode("utf-8")
+    req = urllib.request.Request(oc["base"] + "/api/chat", data=payload,
+                                 headers={"Content-Type": "application/json"}, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=max(timeout, 120)) as r:
+            data = json.loads(r.read().decode("utf-8", "replace"))
+    except Exception as e:
+        raise RuntimeError("Ollama: " + str(e)[:150])
+    return ((data.get("message") or {}).get("content") or "").strip()

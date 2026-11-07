@@ -44,10 +44,14 @@ from graph import build_graph  # noqa: E402
 from chart import build_svg, matplotlib_snippet, parse_csv  # noqa: E402
 import arxiv  # noqa: E402
 import llm  # noqa: E402
+import embeddings  # noqa: E402
 
 DATA = os.path.join(ROOT, "data")
 PARSED = os.path.join(DATA, "parsed")
 PAGES = os.path.join(DATA, "pages")
+EMB = os.path.join(DATA, "emb")
+os.makedirs(EMB, exist_ok=True)
+embeddings.set_cache_dir(EMB)
 UPLOADS = os.path.join(DATA, "uploads")
 for d in (DATA, PARSED, PAGES, UPLOADS):
     os.makedirs(d, exist_ok=True)
@@ -540,6 +544,7 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             if u.path == "/api/health":
                 return self._send(*_json({"ok": True, "pdf_dirs": PDF_DIRS, "llm": llm.available(),
+                                          "provider": llm.provider(), "hybrid": embeddings.available(),
                                           "parser_version": PARSER_VERSION}))
             if u.path == "/api/library":
                 return self._send(*_json({"docs": library()}))
@@ -709,7 +714,7 @@ class Handler(SimpleHTTPRequestHandler):
                 steps = []
                 t0 = time.time()
                 _exp = query_extra_terms(question)
-                _step(steps, "检索（" + ("跨语言扩展" if _exp else "BM25") + "）", t0,
+                _step(steps, "检索（" + ("混合检索" if embeddings.available() else ("跨语言扩展" if _exp else "BM25")) + "）", t0,
                       "命中 %d 段" % 0)  # 先占位，下面补 detail
                 res = ask(parsed, question, extra_terms=_exp)
                 steps[-1]["detail"] = "命中 %d 段候选" % len(res.get("anchors", []))
@@ -744,9 +749,13 @@ class Handler(SimpleHTTPRequestHandler):
                 steps = []
                 t0 = time.time()
                 _exp = query_extra_terms(question)
-                r1, r2 = ask(p1, question, topk=6, extra_terms=_exp), ask(p2, question, topk=6, extra_terms=_exp)
-                r1["anchors"] = build_evidence(p1, r1.get("anchors", []))
-                r2["anchors"] = build_evidence(p2, r2.get("anchors", []))
+                from concurrent.futures import ThreadPoolExecutor
+                with ThreadPoolExecutor(max_workers=2) as _ex:
+                    f1 = _ex.submit(ask, p1, question, 6, _exp, k1)
+                    f2 = _ex.submit(ask, p2, question, 6, _exp, k2)
+                    r1, r2 = f1.result(), f2.result()
+                r1["anchors"] = build_evidence(p1, r1.get("anchors", []), question=question)[:8]
+                r2["anchors"] = build_evidence(p2, r2.get("anchors", []), question=question)[:8]
                 _step(steps, "两篇分别检索", t0, "A %d 段 / B %d 段" % (len(r1.get("anchors", [])), len(r2.get("anchors", []))))
                 docs = [
                     {"label": "A", "key": k1, "title": p1["meta"]["title"], "authors": p1["meta"].get("authors", ""),
@@ -764,6 +773,17 @@ class Handler(SimpleHTTPRequestHandler):
                     except Exception as e:
                         res["llm_error"] = str(e)[:200]
                         _step(steps, "生成失败，回退原文", t1, str(e)[:60])
+                # 界面展示收敛：按页去重、每篇最多 4 条（模型仍用上面 8 条）
+                for d in docs:
+                    seen_pages, kept = set(), []
+                    for a in d.get("anchors", []):
+                        if a["page"] in seen_pages:
+                            continue
+                        seen_pages.add(a["page"])
+                        kept.append(a)
+                        if len(kept) >= 4:
+                            break
+                    d["anchors"] = kept
                 res["trace"] = steps
                 if not res["answer"]:
                     parts = ["（AI 未启用或不可用，以下为两篇论文的相关原文）"]
