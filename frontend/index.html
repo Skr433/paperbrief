@@ -188,6 +188,12 @@
   html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch}
   #landing-view,#about-view{min-height:100vh}
   .btn-home{height:36px;padding:0 10px;font-size:14px;color:#4b5563}
+  /* 防横向溢出：grid/flex 子项允许收缩 */
+  #app-shell{max-width:100vw;overflow-x:hidden}
+  #app-shell > header,#app-shell > main,#app-shell #side,#app-shell #viewer{min-width:0}
+  #app-shell .card,#app-shell .item,#app-shell .sidebar-hint,#app-shell .ans{max-width:100%;box-sizing:border-box}
+  #app-shell .meta{flex-wrap:wrap}
+  #app-shell .card h3{flex-wrap:wrap}
   @media (max-width:980px){
     #side{overflow:visible}
     .tabs{position:sticky;top:0;z-index:30;background:#fff;padding:8px 0 4px;border-bottom:1px solid var(--line);margin-bottom:8px}
@@ -305,9 +311,23 @@
     #sidenav .snav-group,#sidenav .grow,#sidenav a[href="#/"]{display:none}
     #sidenav .snav{white-space:nowrap;padding:7px 10px}
     #sidenav .subnav{padding-left:10px}
-    #app-shell > main{display:block;height:auto}
-    #viewer{height:60vh}
-    #side{height:auto}
+    html,body{height:auto !important;min-height:100% !important;overflow-y:auto !important}
+    #app-shell{height:auto !important;min-height:100vh;overflow:visible !important;
+               grid-template-rows:auto auto auto}
+    #app-shell > main{display:block;height:auto;overflow:visible}
+    #viewer{height:52vh;overflow:auto}
+    #side{height:auto;overflow:visible;padding:10px 12px 32px}
+    #sidenav{position:sticky;top:0;z-index:40;box-shadow:0 2px 8px rgba(15,23,42,.05)}
+    /* 顶部工具栏换行，避免撑宽页面 */
+    #app-shell > header{flex-wrap:wrap;gap:8px;padding:10px 12px}
+    #app-shell > header .logo{font-size:17px}
+    #app-shell > header .sub{display:none}
+    #app-shell > header select{flex:1 1 100%;max-width:none;min-width:0;height:38px;font-size:13px}
+    #app-shell > header button{flex:1 1 auto;height:38px;padding:0 10px;font-size:13px}
+    #app-shell > header .btn-home{order:-1;flex:0 0 auto}
+    #app-shell #side .card{padding:12px}
+    #app-shell #side .item{word-break:break-word}
+    #app-shell #side p,#app-shell #side .ans{word-break:break-word}
     .l-head{padding:12px 18px;gap:12px}
     .l-nav{display:none}
     .hero{padding:36px 16px 20px;overflow-x:hidden}
@@ -365,7 +385,7 @@
   </section>
 
   <footer class="l-foot">
-    <span>PaperBrief v0.14.1 · 每条结论都能点回原文</span>
+    <span>PaperBrief v0.14.2 · 每条结论都能点回原文</span>
     <span><a href="#/about">技术说明与已知限制</a> · 第九届传智杯 · 科研小助手 Agent</span>
   </footer>
 </div>
@@ -384,7 +404,7 @@
     <p>扫描版 PDF 无 OCR；部分论文参考文献排版特殊时解析条数会偏少（已给出提示）；arXiv 从国内访问偶发超时，已做重试、缓存与友好提示；本地 3B 模型质量弱于云端，定位为离线演示。</p>
     <p><a href="https://github.com/Skr433/paperbrief">代码仓库</a> · <a href="#/app/brief">进入工作台</a></p>
   </section>
-  <footer class="l-foot"><span>PaperBrief v0.14.1</span><span>第九届传智杯 · 赛道 10040</span></footer>
+  <footer class="l-foot"><span>PaperBrief v0.14.2</span><span>第九届传智杯 · 赛道 10040</span></footer>
 </div>
 
 <div id="app-shell" style="display:none">
@@ -405,7 +425,7 @@
 <header>
   <a class="btn btn-home" href="#/" title="返回首页">⌂ 首页</a>
   <div class="logo">Paper<span>Brief</span></div>
-  <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.1</span></div>
+  <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.2</span></div>
   <div class="grow"></div>
   <select id="lib"><option>正在加载论文库…</option></select>
   <button id="btnParse" class="primary">解析并生成</button>
@@ -1666,9 +1686,11 @@ function showView(which){
   landing.style.display = which === "landing" ? "block" : "none";
   about.style.display = which === "about" ? "block" : "none";
   shell.style.display = which === "app" ? "grid" : "none";
-  document.body.style.overflow = which === "app" ? "hidden" : "auto";
-  document.documentElement.style.overflowY = which === "app" ? "hidden" : "auto";
-  document.body.style.height = which === "app" ? "100vh" : "auto";
+  const narrow = window.innerWidth <= 980;
+  const lock = which === "app" && !narrow;
+  document.body.style.overflow = lock ? "hidden" : "auto";
+  document.documentElement.style.overflowY = lock ? "hidden" : "auto";
+  document.body.style.height = lock ? "100vh" : "auto";
   window.scrollTo(0, 0);
 }
 
@@ -1706,6 +1728,8 @@ function route(){
 }
 
 window.addEventListener("hashchange", route);
+let _rsz = null;
+window.addEventListener("resize", ()=>{ clearTimeout(_rsz); _rsz = setTimeout(route, 200); });
 
 function initNav(){
   document.querySelectorAll("#sidenav .snav[data-route]").forEach(a=>{
