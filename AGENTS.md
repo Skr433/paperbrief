@@ -8,8 +8,8 @@
 - `backend/`：server.py（HTTP 路由）、pdf_parse.py（解析）、retrieval.py（BM25+锚点）、brief.py（汇报包）、llm.py（DeepSeek/Ollama 双后端）、graph.py（引文图谱）、chart.py（CSV→SVG）、arxiv.py（arXiv 推荐）
 - `frontend/index.html`：单文件前端（无构建）
 - `scripts/`：smoke_test.py、http_smoke.py、regression.py（9 题）、evaluate.py（解析+检索命中率+延迟）
-- `deploy.sh`：Ubuntu 一键部署（systemd + Nginx）；`部署说明.md`
-- 资料与日志在桌面项目 `paperbrief/`（04_资料、05_日志），不在本仓库
+- `deploy.sh`：Ubuntu 一键部署；步骤见 `docs/deploy.md`
+- 资料与日志在桌面项目 `paperbrief/`（04_资料、05_日志）；设计约束见 `DESIGN.md`，决策记录见 `docs/decisions-design.md`
 
 ## 常用命令
 
@@ -21,8 +21,7 @@ python scripts/regression.py --base http://1.14.98.248   # 9 题回归
 python scripts/evaluate.py --base http://1.14.98.248     # 评测报告
 ```
 
-部署：本机 `scp paperbrief_deploy.zip ubuntu@<IP>:/home/ubuntu/`，服务器
-`sudo rm -rf paperbrief_deploy && unzip -o paperbrief_deploy.zip && cd paperbrief_deploy && sudo bash deploy.sh`
+部署：见 `docs/deploy.md`（唯一出处）；评测数据见 `docs/evaluation-2026-11-08.md`。
 
 ## 硬规则
 
