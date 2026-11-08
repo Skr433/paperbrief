@@ -9,6 +9,8 @@
 
 from __future__ import annotations
 
+from refs_layout import refs_by_layout
+
 import hashlib
 import os
 import re
@@ -16,7 +18,7 @@ import unicodedata
 from collections import Counter
 
 # 解析版本号：改动解析逻辑时递增，服务端会据此自动失效旧缓存（避免"改了代码还看到旧结果"）
-PARSER_VERSION = "0.2.4"
+PARSER_VERSION = "0.2.9"
 
 AFFIL_NAMES = [
     "Google Brain", "Google Research", "Google", "University of Toronto", "University of Washington",
@@ -24,7 +26,6 @@ AFFIL_NAMES = [
     "IBM Research", "Stanford University", "MIT", "Carnegie Mellon University", "UC Berkeley",
     "Tsinghua University", "Peking University",
 ]
-
 
 def clean_affiliations(text: str) -> str:
     """把首页脚注里的机构去重成 "Google Brain / Google Research / University of Toronto"。"""
@@ -67,18 +68,15 @@ WATERMARK_RE = re.compile(
 )
 _TOKEN = re.compile(r"[A-Za-z0-9βγδαεζηθικλμνξοπρστυφχψω]+")
 
-
 def norm_space(s: str) -> str:
     s = unicodedata.normalize("NFKC", s or "").replace("\u00ad", "")
     s = re.sub(r"[ \t\u3000]+", " ", s)
     return s.strip()
 
-
 def norm_text(s: str) -> str:
     s = norm_space(s).lower()
     s = re.sub(r"[^0-9a-z\u4e00-\u9fff]+", " ", s)
     return re.sub(r"\s+", " ", s).strip()
-
 
 def tokens(s: str) -> list[str]:
     """英文按词、模型名（gpt-1 等）保整体、中文按二元组切分。"""
@@ -91,9 +89,6 @@ def tokens(s: str) -> list[str]:
         else:
             out.extend(seg[i: i + 2] for i in range(len(seg) - 1))
     return out
-
-
-# ---------------------------------------------------------------- 页面结构
 
 def _page_blocks(page_dict: dict, page_h: float) -> list[dict]:
     """把一页拆成 block → lines，保持 PyMuPDF 的阅读顺序（不跨栏重排）。"""
@@ -136,7 +131,6 @@ def _page_blocks(page_dict: dict, page_h: float) -> list[dict]:
             blocks.append({"bbox": [round(v, 2) for v in b["bbox"]], "lines": lines})
     return blocks
 
-
 def _body_size(all_blocks: list[list[dict]]) -> float:
     cnt = Counter()
     for blocks in all_blocks[1:6]:
@@ -150,7 +144,6 @@ def _body_size(all_blocks: list[list[dict]]) -> float:
                 for ln in b["lines"]:
                     cnt[ln["size"]] += max(1, len(ln["text"]))
     return cnt.most_common(1)[0][0] if cnt else 10.0
-
 
 def _heading_level(text: str, size: float, body: float, bold: bool = False) -> int:
     t = norm_space(text)
@@ -175,7 +168,6 @@ def _heading_level(text: str, size: float, body: float, bold: bool = False) -> i
     if t.isupper() and 3 <= len(t) <= 60:
         return 2
     return 0
-
 
 def _blocks_to_paragraphs(blocks: list[dict], body: float) -> list[dict]:
     """每个 block 内部按行合并；块之间不合并（双栏安全）。"""
@@ -209,7 +201,6 @@ def _blocks_to_paragraphs(blocks: list[dict], body: float) -> list[dict]:
     for p in out:
         p["text"] = norm_space(p["text"])
     return out
-
 
 # ---------------------------------------------------------------- 主入口
 
@@ -372,6 +363,15 @@ def parse_pdf(path: str) -> dict:
         if len(fb) >= 5:
             refs = fb
 
+    # 旧逻辑明显失效（T5 作者起首、UDL 教材）→ 版式抽取
+    if len(refs) < 10 or (len(page_blocks) > 100 and len(refs) < 200):
+        try:
+            _lay = refs_by_layout(doc)
+            if len(_lay) > max(30, len(refs) * 2):
+                refs = _lay
+        except Exception:
+            pass
+
     meta = {
         "file": os.path.basename(path),
         "pages": len(page_blocks),
@@ -403,7 +403,6 @@ def parse_pdf(path: str) -> dict:
         },
     }
 
-
 # ---------------------------------------------------------------- 去重指纹
 
 def _shingles(text: str, k: int = 5) -> list[str]:
@@ -411,7 +410,6 @@ def _shingles(text: str, k: int = 5) -> list[str]:
     if len(ws) < k:
         return [" ".join(ws)] if ws else []
     return [" ".join(ws[i : i + k]) for i in range(len(ws) - k + 1)]
-
 
 def fingerprint(parsed: dict, k: int = 5) -> list[int]:
     """64 位 MinHash 签名，用于近似判重（v1/v7 这类不同版本也能识别）。"""
@@ -426,12 +424,10 @@ def fingerprint(parsed: dict, k: int = 5) -> list[int]:
     hs = [(hash(s) & 0xFFFFFFFF) for s in sh]
     return [min((a * h + b) % (2**31 - 1) for h in hs) for a, b in params]
 
-
 def jaccard(sig_a: list[int], sig_b: list[int]) -> float:
     if not sig_a or not sig_b:
         return 0.0
     return sum(1 for x, y in zip(sig_a, sig_b) if x == y) / len(sig_a)
-
 
 def _fallback_refs(doc) -> list[dict]:
     """参考文献回退：从出现 References/参考文献 的页开始，按 block 切分条目。"""
@@ -489,4 +485,3 @@ def _fallback_refs(doc) -> list[dict]:
                 if len(out) >= 300:
                     return out
     return out
-
