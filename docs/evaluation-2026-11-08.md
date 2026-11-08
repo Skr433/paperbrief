@@ -148,9 +148,6 @@ live health：`parser_version 0.2.4`、`provider deepseek:deepseek-chat`、`hybr
 
 ## 六、复现方式
 
-```bash
-python _eval_parse_all.py                          # 40 篇全量解析
-python _eval_questions.py http://1.14.98.248 prod  # 9 题 + 模块
-```
+评测脚本为一次性工具（测完已清理）；原始数据保留在 `04_资料/评测_1108/`，可据此复算。
 
 数据文件：`评测_1108/parse_all.json`、`eval_prod_before.json`、`eval_local_v146.json`、`人工判定_9题.md`
