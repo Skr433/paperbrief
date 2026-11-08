@@ -16,7 +16,7 @@ import unicodedata
 from collections import Counter
 
 # 解析版本号：改动解析逻辑时递增，服务端会据此自动失效旧缓存（避免"改了代码还看到旧结果"）
-PARSER_VERSION = "0.2.3"
+PARSER_VERSION = "0.2.4"
 
 AFFIL_NAMES = [
     "Google Brain", "Google Research", "Google", "University of Toronto", "University of Washington",
@@ -48,6 +48,13 @@ def clean_affiliations(text: str) -> str:
 MATH_FONT_HINTS = ("CMMI", "CMSY", "CMEX", "CMR", "MSAM", "MSBM", "STIX", "Symbol", "Math")
 CAPTION_RE = re.compile(r"^((figure|fig\.|table|algorithm|listing)\s*[\dA-Z]|(图|表)\s*\d)", re.I)
 REF_HEADING_RE = re.compile(r"^(references|bibliography|参\s*考\s*文\s*献|引用文献)\s*[:：]?$", re.I)
+
+# 参考文献行特征：编号开头，或含 arXiv/Proceedings 等出版信息
+REF_LINE_RE = re.compile(
+    r"^\[\d+\]|^\d+[.)]\s|arXiv|Proceedings|Conference on|pp\.|vol\.|et al\.|"
+    r"University Press|Springer|IEEE|ACL|NeurIPS|ICML|ICLR|EMNLP|NAACL",
+    re.I,
+)
 NUMBERED_HEADING_RE = re.compile(r"^(\d+(\.\d+){0,3})\s+[A-Z\u4e00-\u9fff]")
 META_LINE_RE = re.compile(
     r"^(基金项目|作者简介|通信作者|收稿日期|DOI|Tel\.?|E-mail|中图分类号|文献标志码|文章编号|关键词|关键字)",
@@ -303,7 +310,7 @@ def parse_pdf(path: str) -> dict:
                 continue
             item = {"page": pno, "bbox": p["bbox"], "text": text, "size": p.get("size", body)}
             if p["kind"] == "heading":
-                if REF_HEADING_RE.match(text):
+                if REF_HEADING_RE.match(text.strip()):
                     in_refs = True
                     sections.append({"sid": len(sections), "title": text, "level": 1,
                                      "page": pno, "bbox": p["bbox"], "para_index": len(paragraphs)})
@@ -340,6 +347,30 @@ def parse_pdf(path: str) -> dict:
         else:
             refs[-1]["text"] += " " + t
             refs[-1]["text"] = refs[-1]["text"][:600]
+
+    # 回退：部分论文 References 标题未被识别为 heading；从文末倒扫参考文献样式段落
+    if len(refs) < 5:
+        tail = [p for p in paragraphs
+                if p.get("kind") in ("body", "reference") and (p.get("text") or "").strip()]
+        picked, misses = [], 0
+        for p in reversed(tail):
+            txt = p["text"].strip()
+            if len(txt) > 30 and REF_LINE_RE.search(txt):
+                picked.append({"page": p["page"], "bbox": p["bbox"], "text": txt[:600]})
+                misses = 0
+            else:
+                misses += 1
+                if misses >= 3 and picked:
+                    break
+                if misses >= 10 and not picked:
+                    break
+        if len(picked) >= 5:
+            refs = list(reversed(picked))
+
+    if len(refs) < 5:
+        fb = _fallback_refs(doc)
+        if len(fb) >= 5:
+            refs = fb
 
     meta = {
         "file": os.path.basename(path),
@@ -400,3 +431,62 @@ def jaccard(sig_a: list[int], sig_b: list[int]) -> float:
     if not sig_a or not sig_b:
         return 0.0
     return sum(1 for x, y in zip(sig_a, sig_b) if x == y) / len(sig_a)
+
+
+def _fallback_refs(doc) -> list[dict]:
+    """参考文献回退：从出现 References/参考文献 的页开始，按 block 切分条目。"""
+    start = None
+    n = len(doc)
+    # 从文末往前找"独立成行"的 References 标题页（避免正文里提到 references）
+    for i in range(n - 1, max(0, int(n * 0.35)) - 1, -1):
+        try:
+            txt = doc[i].get_text("text") or ""
+        except Exception:
+            continue
+        lines = [ln.strip().lower().strip(":：.") for ln in txt.splitlines()]
+        if any(ln in ("references", "bibliography", "参考文献") or ln.startswith("references ") and len(ln) < 30 for ln in lines):
+            start = i
+            break
+        if re.search(r"参\s*考\s*文\s*献", txt):
+            start = i
+            break
+    if start is None:
+        return []
+    out, seen = [], set()
+    started = False
+    for pno in range(start, len(doc)):
+        page = doc[pno]
+        try:
+            blocks = page.get_text("blocks") or []
+        except Exception:
+            continue
+        for b in blocks:
+            if len(b) < 5:
+                continue
+            text = (b[4] or "").strip()
+            if len(text) < 30:
+                continue
+            bbox = [round(float(b[0]), 2), round(float(b[1]), 2),
+                    round(float(b[2]), 2), round(float(b[3]), 2)]
+            parts = re.split(r"(?=\[\d+\]\s)|(?=\n\d{1,3}[.)]\s)", "\n" + text)
+            for part in parts:
+                part = part.strip()
+                if len(part) < 25:
+                    continue
+                if not started:
+                    if len(part) > 40 and REF_LINE_RE.search(part):
+                        started = True
+                    else:
+                        continue
+                key = (pno, part[:40])
+                if key in seen:
+                    continue
+                seen.add(key)
+                if out and (part[:1].islower() or out[-1]["text"].endswith("-")) and len(part) < 200:
+                    out[-1]["text"] = (out[-1]["text"] + " " + part)[:600]
+                    continue
+                out.append({"page": pno + 1, "bbox": bbox, "text": part[:600]})
+                if len(out) >= 300:
+                    return out
+    return out
+

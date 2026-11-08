@@ -178,6 +178,38 @@ def _abstract_anchors(parsed: dict, limit: int = 2) -> list[dict]:
         for p in cands
     ]
 
+
+
+# 数字/参数/上下文类问题：BM25 常把附录排前面，按"数字+单位"补证据
+_FACT_EXTRA = [
+    (re.compile(r"参数|参数量|规模|billion|million|parameter|parameters|model size", re.I),
+     re.compile(r"\d[\d,.]*\s*(billion|million|亿|B\b)", re.I)),
+    (re.compile(r"上下文|context|窗口|长度|token|tokens", re.I),
+     re.compile(r"(context|token)[^.]{0,90}\d{2,5}|\d{2,5}[^.]{0,40}(context|token)", re.I)),
+]
+
+
+def _fact_extra_anchors(parsed: dict, question: str, limit: int = 3) -> list[dict]:
+    """按问题类型补充含数字的段落（保持 bbox 可跳转）。"""
+    if not any(p.search(question) for p, _ in _FACT_EXTRA):
+        return []
+    pats = [pat for q, pat in _FACT_EXTRA if q.search(question)]
+    out, seen = [], set()
+    for p in parsed.get("paragraphs", []):
+        text = p.get("text") or ""
+        if len(text) < 40:
+            continue
+        if not any(pat.search(text) for pat in pats):
+            continue
+        key = (p["page"], p["bbox"][0] if p.get("bbox") else 0)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append({"page": p["page"], "bbox": p["bbox"], "text": text[:450], "score": 0.6})
+        if len(out) >= limit:
+            break
+    return out
+
 def ask(parsed: dict, question: str, topk: int = 3, extra_terms: str = "", doc_key: str = "") -> dict:
     """返回 {answer, anchors:[{page,bbox,text,score}], mode}。"""
     paras = [p for p in parsed["paragraphs"] if len(p["text"]) > 40]
@@ -275,6 +307,12 @@ def ask(parsed: dict, question: str, topk: int = 3, extra_terms: str = "", doc_k
         sents = _sentences(p["text"])
         best = [s for s in sents if any(t in s.lower() for t in q_tokens)]
         answer_bits.append(" ".join((best or sents)[:2])[:300])
+
+    # 参数/上下文类问题：补数字型证据（BM25 常把附录排前面）
+    for _a in _fact_extra_anchors(parsed, question):
+        if not any(_a["page"] == b["page"] and _a["bbox"] == b["bbox"] for b in anchors):
+            anchors.append(_a)
+            answer_bits.append((_a["text"] or "")[:240])
 
     if not anchors:
         # 总结类问题（"这篇论文主要写了什么"）→ 摘要兜底，仍带页码锚点
