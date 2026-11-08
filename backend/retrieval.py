@@ -151,6 +151,33 @@ def _sentences(text: str) -> list[str]:
     return [p.strip() for p in parts if p.strip()]
 
 
+
+
+# 总结类问题：中文提问在英文原文里 BM25 常 0 命中，用摘要兜底（仍带锚点）
+_SUMMARY_RE = re.compile(
+    r"主要|概述|总结|简介|介绍|讲了什么|写了什么|说的什么|什么内容|主要内容|"
+    r"贡献|创新点|解决什么|是什么|关于什么|summary|overview|contribution|about",
+    re.I,
+)
+
+
+def _abstract_anchors(parsed: dict, limit: int = 2) -> list[dict]:
+    """取首页摘要区域的长段落作为兜底证据（保持页码/bbox 可跳转）。"""
+    cands = []
+    for p in parsed.get("paragraphs", []):
+        if p.get("page") != 1:
+            continue
+        text = p.get("text") or ""
+        if len(text) < 180:
+            continue
+        cands.append(p)
+        if len(cands) >= limit:
+            break
+    return [
+        {"page": p["page"], "bbox": p["bbox"], "text": p["text"][:500], "score": 0.5}
+        for p in cands
+    ]
+
 def ask(parsed: dict, question: str, topk: int = 3, extra_terms: str = "", doc_key: str = "") -> dict:
     """返回 {answer, anchors:[{page,bbox,text,score}], mode}。"""
     paras = [p for p in parsed["paragraphs"] if len(p["text"]) > 40]
@@ -250,6 +277,15 @@ def ask(parsed: dict, question: str, topk: int = 3, extra_terms: str = "", doc_k
         answer_bits.append(" ".join((best or sents)[:2])[:300])
 
     if not anchors:
+        # 总结类问题（"这篇论文主要写了什么"）→ 摘要兜底，仍带页码锚点
+        if _SUMMARY_RE.search(question):
+            ab = _abstract_anchors(parsed)
+            if ab:
+                return {
+                    "mode": "rag",
+                    "answer": "这篇论文的主要内容（依据首页摘要）：\n" + ab[0]["text"][:400],
+                    "anchors": ab,
+                }
         return {"mode": "none", "answer": "未在论文中找到相关段落（无锚点，不出结论）。", "anchors": []}
 
     return {
