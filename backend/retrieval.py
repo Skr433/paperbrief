@@ -29,6 +29,10 @@ _FACT_RE = [re.compile(p, re.I) for p in FACT_PATTERNS]
 def build_evidence(parsed: dict, base_anchors: list[dict], extra: int = 6, question: str = "") -> list[dict]:
     """在 BM25 结果之外，补充"命中事实关键词"的段落（去重、限量）。"""
     out = list(base_anchors)
+    # 数字型证据（参数/上下文）：多篇对比时补 "1.5 billion / nctx=2048" 一类段落
+    for a in _fact_extra_anchors(parsed, question or ""):
+        if not any(a["page"] == b.get("page") and (a.get("text") or "")[:40] == (b.get("text") or "")[:40] for b in out):
+            out.append(a)
     seen = {(a.get("page"), (a.get("text") or "")[:40]) for a in out}
     cands = []
     for p in parsed.get("paragraphs", []):
@@ -258,7 +262,11 @@ def ask(parsed: dict, question: str, topk: int = 3, extra_terms: str = "", doc_k
     if re.search(r"参考文献|reference|引用.*哪篇|bibliography", ql):
         refs = parsed.get("references", [])
         lines = q_tokens
-        hits = [r for r in refs if any(t in r["text"].lower() for t in lines if len(t) > 3)]
+        cand = [r for r in refs if any(t in r["text"].lower() for t in lines if len(t) > 3)]
+        # 打分：命中词数越多越可信；要求至少 2 个词（单一 "layer" 会误召回 MoE 等条目）
+        scored = [(sum(1 for t in set(lines) if len(t) > 3 and t in r["text"].lower()), r) for r in cand]
+        scored.sort(key=lambda x: -x[0])
+        hits = [r for sc, r in scored if sc >= 2] or [r for sc, r in scored[:2]]
         if hits:
             return {
                 "mode": "reference",
