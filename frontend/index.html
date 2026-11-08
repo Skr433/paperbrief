@@ -300,6 +300,40 @@
   @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
   .hero{animation:fadeUp .45s ease both}
 
+  /* 首页放大与呼吸感（2026-11-08） */
+  .hero{max-width:1040px;padding:96px 24px 56px}
+  .hero h1{font-size:48px;line-height:1.22;margin-bottom:22px}
+  .hero-sub{font-size:19px;line-height:1.95;margin-bottom:32px}
+  .hero-actions{margin-bottom:22px}
+  .hero-note{font-size:14px}
+  .steps{margin:40px auto 0;gap:20px;max-width:1080px}
+  .step{padding:24px 26px}
+  .step-n{width:30px;height:30px;font-size:15px;margin-bottom:12px}
+  .step b{font-size:17px;margin-bottom:6px}
+  .step p{font-size:15px;line-height:1.75}
+  .preview{max-width:1080px;margin:64px auto 0;padding:0 24px}
+  .browser{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;
+           box-shadow:0 24px 70px rgba(15,23,42,.12)}
+  .browser-bar{display:flex;align-items:center;gap:6px;height:38px;padding:0 14px;
+               background:#f8fafc;border-bottom:1px solid var(--line)}
+  .browser-bar .dot{width:9px;height:9px;border-radius:50%}
+  .browser-bar .d1{background:#fca5a5}
+  .browser-bar .d2{background:#fcd34d}
+  .browser-bar .d3{background:#86efac}
+  .browser-bar .burl{margin:0 auto;font-size:12px;color:#94a3b8;letter-spacing:.2px}
+  .browser img{display:block;width:100%;height:auto}
+  .preview-cap{text-align:center;color:var(--muted);font-size:14px;margin:14px 0 0}
+  .features-wrap{background:#f8fafc;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+                 margin-top:96px;padding:64px 0 56px}
+  .features{max-width:1080px;margin:0 auto;padding:0 24px}
+  .features h2{font-size:28px;margin-bottom:26px}
+  .cards{gap:20px}
+  .fcard{padding:24px}
+  .fcard .ficon{width:42px;height:42px;margin-bottom:14px}
+  .fcard .ficon svg{width:22px;height:22px}
+  .fcard b{font-size:17px}
+  .fcard p{font-size:15px;line-height:1.75;min-height:52px}
+  .l-foot{max-width:1080px;margin:48px auto 64px}
   @media (max-width:1100px){
     .cards{grid-template-columns:repeat(2,1fr)}
   }
@@ -330,8 +364,13 @@
     #app-shell #side p,#app-shell #side .ans{word-break:break-word}
     .l-head{padding:12px 18px;gap:12px}
     .l-nav{display:none}
-    .hero{padding:36px 16px 20px;overflow-x:hidden}
-    .hero h1{font-size:27px;letter-spacing:-.3px}
+    .hero{padding:48px 16px 28px;overflow-x:hidden}
+    .hero h1{font-size:31px;letter-spacing:-.3px}
+    .hero-sub{font-size:16px;line-height:1.85}
+    .preview{margin-top:40px;padding:0 14px}
+    .browser-bar{height:32px}
+    .preview-cap{font-size:13px}
+    .features-wrap{margin-top:56px;padding:44px 0 36px}
     .hero-sub{font-size:14px;line-height:1.75;padding:0 2px}
     .hero-actions{flex-direction:column;align-items:stretch;padding:0 24px}
     .hero-actions .btn{width:100%}
@@ -372,6 +411,15 @@
     <div class="step"><span class="step-n">3</span><b>点锚点核对</b><p>每条结论都带页码，点一下跳回原文并高亮。</p></div>
   </section>
 
+  <section class="preview">
+    <div class="browser">
+      <div class="browser-bar"><span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span><span class="burl">paperbrief · 工作台</span></div>
+      <img src="/static/preview_workspace.png" alt="PaperBrief 工作台：左侧原文，右侧带页码锚点的汇报包" />
+    </div>
+    <p class="preview-cap">汇报包与原文对照：点任意结论旁的页码，左侧原文跳转到对应页并高亮。</p>
+  </section>
+
+  <div class="features-wrap">
   <section class="features">
     <h2>一个工作台，覆盖读论文的每个环节</h2>
     <div class="cards">
@@ -383,9 +431,10 @@
       <a class="fcard" href="#/app/tools/chart"><span class="ficon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span><b>实验图表</b><p>上传 CSV，生成论文级图表与中文图注。</p><em>进阶</em></a>
     </div>
   </section>
+  </div>
 
   <footer class="l-foot">
-    <span>PaperBrief v0.14.3 · 每条结论都能点回原文</span>
+    <span>PaperBrief v0.14.4 · 每条结论都能点回原文</span>
     <span><a href="#/about">技术说明与已知限制</a> · 第九届传智杯 · 科研小助手 Agent</span>
   </footer>
 </div>
@@ -404,7 +453,7 @@
     <p>扫描版 PDF 无 OCR；部分论文参考文献排版特殊时解析条数会偏少（已给出提示）；arXiv 从国内访问偶发超时，已做重试、缓存与友好提示；本地 3B 模型质量弱于云端，定位为离线演示。</p>
     <p><a href="https://github.com/Skr433/paperbrief">代码仓库</a> · <a href="#/app/brief">进入工作台</a></p>
   </section>
-  <footer class="l-foot"><span>PaperBrief v0.14.3</span><span>第九届传智杯 · 赛道 10040</span></footer>
+  <footer class="l-foot"><span>PaperBrief v0.14.4</span><span>第九届传智杯 · 赛道 10040</span></footer>
 </div>
 
 <div id="app-shell" style="display:none">
@@ -425,7 +474,7 @@
 <header>
   <a class="btn btn-home" href="#/" title="返回首页">⌂ 首页</a>
   <div class="logo">Paper<span>Brief</span></div>
-  <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.3</span></div>
+  <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.4</span></div>
   <div class="grow"></div>
   <select id="lib"><option>正在加载论文库…</option></select>
   <button id="btnParse" class="primary">解析并生成</button>

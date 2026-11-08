@@ -735,10 +735,12 @@ class Handler(SimpleHTTPRequestHandler):
                 f = os.path.join(ROOT, "frontend", "index.html")
                 return self._send(200, "text/html; charset=utf-8", open(f, "rb").read())
             if u.path.startswith("/static/"):
-                f = os.path.join(ROOT, "frontend", u.path[len("/static/"):])
+                f = os.path.join(ROOT, "frontend", "static", u.path[len("/static/"):])
                 if os.path.isfile(f):
                     ext = os.path.splitext(f)[1].lstrip(".")
-                    ct = {"html": "text/html", "css": "text/css", "js": "application/javascript"}.get(ext, "application/octet-stream")
+                    ct = {"html": "text/html", "css": "text/css", "js": "application/javascript",
+                      "png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg",
+                      "svg": "image/svg+xml", "webp": "image/webp"}.get(ext, "application/octet-stream")
                     return self._send(200, ct + "; charset=utf-8", open(f, "rb").read())
             return self._send(*_json({"error": "not found"}, 404))
         except Exception:
