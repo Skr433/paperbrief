@@ -106,7 +106,11 @@ cat > /etc/nginx/sites-available/paperbrief <<EOF
 server {
     listen 80 default_server;
     server_name _;
+    server_tokens off;
     client_max_body_size 60m;
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options SAMEORIGIN always;
+    add_header Referrer-Policy no-referrer always;
 
     location / {
         proxy_pass http://127.0.0.1:$PORT;

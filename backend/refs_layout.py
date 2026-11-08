@@ -132,3 +132,61 @@ def _refs_by_layout(doc) -> list[dict]:
 
 def refs_by_layout(doc) -> list[dict]:
     return _refs_by_layout(doc)
+
+
+def fallback_refs(doc) -> list[dict]:
+    """参考文献回退：从出现 References/参考文献 的页开始，按 block 切分条目。"""
+    start = None
+    n = len(doc)
+    # 从文末往前找"独立成行"的 References 标题页（避免正文里提到 references）
+    for i in range(n - 1, max(0, int(n * 0.35)) - 1, -1):
+        try:
+            txt = doc[i].get_text("text") or ""
+        except Exception:
+            continue
+        lines = [ln.strip().lower().strip(":：.") for ln in txt.splitlines()]
+        if any(ln in ("references", "bibliography", "参考文献") or ln.startswith("references ") and len(ln) < 30 for ln in lines):
+            start = i
+            break
+        if re.search(r"参\s*考\s*文\s*献", txt):
+            start = i
+            break
+    if start is None:
+        return []
+    out, seen = [], set()
+    started = False
+    for pno in range(start, len(doc)):
+        page = doc[pno]
+        try:
+            blocks = page.get_text("blocks") or []
+        except Exception:
+            continue
+        for b in blocks:
+            if len(b) < 5:
+                continue
+            text = (b[4] or "").strip()
+            if len(text) < 30:
+                continue
+            bbox = [round(float(b[0]), 2), round(float(b[1]), 2),
+                    round(float(b[2]), 2), round(float(b[3]), 2)]
+            parts = re.split(r"(?=\[\d+\]\s)|(?=\n\d{1,3}[.)]\s)", "\n" + text)
+            for part in parts:
+                part = part.strip()
+                if len(part) < 25:
+                    continue
+                if not started:
+                    if len(part) > 40 and REF_LINE_RE.search(part):
+                        started = True
+                    else:
+                        continue
+                key = (pno, part[:40])
+                if key in seen:
+                    continue
+                seen.add(key)
+                if out and (part[:1].islower() or out[-1]["text"].endswith("-")) and len(part) < 200:
+                    out[-1]["text"] = (out[-1]["text"] + " " + part)[:600]
+                    continue
+                out.append({"page": pno + 1, "bbox": bbox, "text": part[:600]})
+                if len(out) >= 300:
+                    return out
+    return out

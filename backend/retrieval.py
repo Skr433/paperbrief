@@ -334,6 +334,16 @@ def ask(parsed: dict, question: str, topk: int = 3, extra_terms: str = "", doc_k
                 }
         return {"mode": "none", "answer": "未在论文中找到相关段落（无锚点，不出结论）。", "anchors": []}
 
+    # 锚点去重：同页同 bbox 只留一条
+    _seen, _ded = set(), []
+    for a in anchors:
+        key = (a.get("page"), tuple(round(float(v), 1) for v in (a.get("bbox") or [])))
+        if key in _seen:
+            continue
+        _seen.add(key)
+        _ded.append(a)
+    anchors = _ded
+
     return {
         "mode": "rag",
         "answer": "\n".join(f"[第{a['page']}页] {a['text'][:200]}" for a in anchors),

@@ -181,13 +181,13 @@ def do_parse(name: str) -> tuple[int, str, bytes]:
     key = _key_of(path)
     cached = _load(key)
     if cached:
-        return _json({"cached": True, "key": key, "doc": _summary(cached), "duplicate": _dup(cached)})
+        return _json({"cached": True, "key": key, "doc": _summary(cached), "stats": _summary(cached)["stats"], "duplicate": _dup(cached)})
 
     with _lock:
         parsed = parse_pdf(path)
         parsed["fingerprint"] = fingerprint(parsed)
         _save(key, parsed)
-    return _json({"cached": False, "key": key, "doc": _summary(parsed), "duplicate": _dup(parsed)})
+    return _json({"cached": False, "key": key, "doc": _summary(parsed), "stats": _summary(parsed)["stats"], "duplicate": _dup(parsed)})
 
 
 def _summary(parsed: dict) -> dict:
@@ -226,7 +226,7 @@ def _dup(parsed: dict) -> dict | None:
 def render_page(key: str, n: int) -> tuple[int, str, bytes]:
     parsed = _load(key)
     if not parsed:
-        return _json({"error": "请先解析"}, 400)
+        return _json({"error": "文档不存在或未解析，请先解析"}, 404)
     out = os.path.join(PAGES, key)
     os.makedirs(out, exist_ok=True)
     png = os.path.join(out, f"p{n}.png")
@@ -599,14 +599,14 @@ class Handler(SimpleHTTPRequestHandler):
                 key = q.get("key", [""])[0]
                 parsed = _load(key)
                 if not parsed:
-                    return self._send(*_json({"error": "请先解析"}, 400))
+                    return self._send(*_json({"error": "文档不存在或未解析，请先解析"}, 404))
                 limit = int(q.get("limit", ["20"])[0])
                 return self._send(*_json(citations(parsed, limit)))
             if u.path == "/api/page_text":
                 key = q.get("key", [""])[0]
                 parsed = _load(key)
                 if not parsed:
-                    return self._send(*_json({"error": "请先解析"}, 400))
+                    return self._send(*_json({"error": "文档不存在或未解析，请先解析"}, 404))
                 page = int(q.get("page", ["1"])[0])
                 return self._send(*_json(build_page_text(parsed, key, page)))
             if u.path == "/api/arxiv":
@@ -638,7 +638,7 @@ class Handler(SimpleHTTPRequestHandler):
                 key = q.get("key", [""])[0]
                 parsed = _load(key)
                 if not parsed:
-                    return self._send(*_json({"error": "请先解析"}, 400))
+                    return self._send(*_json({"error": "文档不存在或未解析，请先解析"}, 404))
                 limit = int(q.get("limit", ["8"])[0])
                 t0 = time.time()
                 kws = None
@@ -693,7 +693,7 @@ class Handler(SimpleHTTPRequestHandler):
                 key = q.get("key", [""])[0]
                 parsed = _load(key)
                 if not parsed:
-                    return self._send(*_json({"error": "请先解析"}, 400))
+                    return self._send(*_json({"error": "文档不存在或未解析，请先解析"}, 404))
                 t0 = time.time()
                 g = get_graph(key, parsed, refresh=q.get("refresh", ["0"])[0] == "1")
                 g["trace"] = [{"step": "构建引文图谱", "ms": int((time.time() - t0) * 1000),
@@ -705,7 +705,7 @@ class Handler(SimpleHTTPRequestHandler):
                 key = q.get("key", [""])[0]
                 parsed = _load(key)
                 if not parsed:
-                    return self._send(*_json({"error": "请先解析"}, 400))
+                    return self._send(*_json({"error": "文档不存在或未解析，请先解析"}, 404))
                 steps = []
                 t0 = time.time()
                 brief = build_brief(parsed)
@@ -725,6 +725,8 @@ class Handler(SimpleHTTPRequestHandler):
                 if q.get("format", [""])[0] == "md":
                     md = brief_to_markdown(brief).encode("utf-8")
                     return self._send(200, "text/markdown; charset=utf-8", md)
+                brief.setdefault("summary", brief.get("abstract") or "")
+                brief.setdefault("speech", brief.get("script") or "")
                 return self._send(*_json(brief))
             if u.path == "/api/page":
                 key = q.get("key", [""])[0]
@@ -735,7 +737,10 @@ class Handler(SimpleHTTPRequestHandler):
                 f = os.path.join(ROOT, "frontend", "index.html")
                 return self._send(200, "text/html; charset=utf-8", open(f, "rb").read())
             if u.path.startswith("/static/"):
-                f = os.path.join(ROOT, "frontend", "static", u.path[len("/static/"):])
+                base = os.path.realpath(os.path.join(ROOT, "frontend", "static"))
+                f = os.path.realpath(os.path.join(base, u.path[len("/static/"):]))
+                if not f.startswith(base + os.sep):
+                    return self._send(*_json({"error": "not found"}, 404))
                 if os.path.isfile(f):
                     ext = os.path.splitext(f)[1].lstrip(".")
                     ct = {"html": "text/html", "css": "text/css", "js": "application/javascript",
@@ -759,7 +764,7 @@ class Handler(SimpleHTTPRequestHandler):
                 key = q.get("key", [""])[0]
                 parsed = _load(key)
                 if not parsed:
-                    return self._send(*_json({"error": "请先解析"}, 400))
+                    return self._send(*_json({"error": "文档不存在或未解析，请先解析"}, 404))
                 payload = json.loads(body.decode("utf-8") or "{}")
                 question = payload.get("q", "")
                 steps = []
@@ -893,7 +898,7 @@ class Handler(SimpleHTTPRequestHandler):
                 key = payload.get("key") or q.get("key", [""])[0]
                 parsed = _load(key)
                 if not parsed:
-                    return self._send(*_json({"error": "请先解析"}, 400))
+                    return self._send(*_json({"error": "文档不存在或未解析，请先解析"}, 404))
                 text = (payload.get("text") or "").strip()[:2000]
                 if not text:
                     return self._send(*_json({"error": "缺少待翻译文本"}, 400))
@@ -928,7 +933,7 @@ class Handler(SimpleHTTPRequestHandler):
                 key = payload.get("key") or q.get("key", [""])[0]
                 parsed = _load(key)
                 if not parsed:
-                    return self._send(*_json({"error": "请先解析"}, 400))
+                    return self._send(*_json({"error": "文档不存在或未解析，请先解析"}, 404))
                 if not llm.available():
                     return self._send(*_json({"error": "AI 未启用，无法生成综述"}, 400))
                 steps = []
@@ -957,7 +962,7 @@ class Handler(SimpleHTTPRequestHandler):
                 key = payload.get("key") or q.get("key", [""])[0]
                 parsed = _load(key)
                 if not parsed:
-                    return self._send(*_json({"error": "请先解析"}, 400))
+                    return self._send(*_json({"error": "文档不存在或未解析，请先解析"}, 404))
                 page = int(payload.get("page") or q.get("page", ["1"])[0])
                 force = bool(payload.get("force"))
                 t0 = time.time()

@@ -23,6 +23,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(os.path.dirname(ROOT), "paperbrief_deploy.zip")
 DESKTOP = os.path.join(os.path.expanduser("~"), "Desktop", "paperbrief", "paperbrief_deploy.zip")
 PDF_SRC = os.path.join(os.path.dirname(ROOT), "ref_kxyzs", "pdf")
+if not os.path.isdir(PDF_SRC) or not os.listdir(PDF_SRC):
+    PDF_SRC = os.path.join(os.path.dirname(ROOT), "官方测试集_1108", "pdf")
 PDFS = ["1706.03762v7.pdf", "1706.03762v1.pdf", "1706.03762v1_img.pdf", "N19-1423.pdf",
         "2106.09685v2.pdf", "2303.08774v6.pdf", "2005.14165v4.pdf", "language_understanding_paper.pdf"]
 

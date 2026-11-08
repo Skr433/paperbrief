@@ -9,7 +9,7 @@
 
 from __future__ import annotations
 
-from refs_layout import refs_by_layout
+from refs_layout import fallback_refs, refs_by_layout
 
 import hashlib
 import os
@@ -18,7 +18,7 @@ import unicodedata
 from collections import Counter
 
 # 解析版本号：改动解析逻辑时递增，服务端会据此自动失效旧缓存（避免"改了代码还看到旧结果"）
-PARSER_VERSION = "0.2.9"
+PARSER_VERSION = "0.2.10"
 
 AFFIL_NAMES = [
     "Google Brain", "Google Research", "Google", "University of Toronto", "University of Washington",
@@ -292,7 +292,9 @@ def parse_pdf(path: str) -> dict:
     sections: list[dict] = []
     captions: list[dict] = []
     figures: list[dict] = []
+    _fig_seen = set()
     in_refs = False
+    refs_start = 0
 
     for pno, (page, blocks) in enumerate(zip(doc, page_blocks), start=1):
         for p in _blocks_to_paragraphs(blocks, body):
@@ -301,11 +303,18 @@ def parse_pdf(path: str) -> dict:
                 continue
             item = {"page": pno, "bbox": p["bbox"], "text": text, "size": p.get("size", body)}
             if p["kind"] == "heading":
-                if REF_HEADING_RE.match(text.strip()):
-                    in_refs = True
+                stripped = text.strip()
+                if REF_HEADING_RE.match(stripped):
+                    # 只看文档后段，避免目录页/早期章节误开参考区
+                    if pno > len(page_blocks) * 0.4:
+                        in_refs = True
+                        refs_start = pno
                     sections.append({"sid": len(sections), "title": text, "level": 1,
                                      "page": pno, "bbox": p["bbox"], "para_index": len(paragraphs)})
                     continue
+                if in_refs and pno > refs_start + 1 and re.search(
+                        r"appendix|appendices|supplementary|附录|^index$|索引", stripped, re.I):
+                    in_refs = False
                 sections.append({"sid": len(sections), "title": text, "level": p["level"],
                                  "page": pno, "bbox": p["bbox"], "para_index": len(paragraphs)})
                 paragraphs.append({**item, "kind": "heading"})
@@ -318,14 +327,21 @@ def parse_pdf(path: str) -> dict:
             else:
                 paragraphs.append({**item, "kind": "body"})
 
+        pw, ph = page.rect.width, page.rect.height
         for img in page.get_images(full=True):
             try:
                 rects = page.get_image_rects(img[0])
             except Exception:
                 rects = []
             for r in rects:
-                if r.width > 40 and r.height > 40:
-                    figures.append({"page": pno, "bbox": [round(v, 2) for v in r]})
+                x0, y0 = max(0.0, r.x0), max(0.0, r.y0)
+                x1, y1 = min(pw, r.x1), min(ph, r.y1)
+                if x1 - x0 > 40 and y1 - y0 > 40:
+                    bbox = [round(x0, 2), round(y0, 2), round(x1, 2), round(y1, 2)]
+                    key = (pno, tuple(bbox))
+                    if key not in _fig_seen:
+                        _fig_seen.add(key)
+                        figures.append({"page": pno, "bbox": bbox})
 
     # 参考文献条目合并：无编号的续行并入上一条
     refs: list[dict] = []
@@ -359,7 +375,7 @@ def parse_pdf(path: str) -> dict:
             refs = list(reversed(picked))
 
     if len(refs) < 5:
-        fb = _fallback_refs(doc)
+        fb = fallback_refs(doc)
         if len(fb) >= 5:
             refs = fb
 
@@ -386,12 +402,14 @@ def parse_pdf(path: str) -> dict:
     }
     doc.close()
 
+    captions = captions[:300]
+    figures = figures[:300]
     return {
         "meta": meta,
         "sections": sections,
         "paragraphs": paragraphs,
-        "captions": captions[:300],
-        "figures": figures[:300],
+        "captions": captions,
+        "figures": figures,
         "references": refs[:300],
         "stats": {
             "n_paragraphs": len(paragraphs),
@@ -428,60 +446,3 @@ def jaccard(sig_a: list[int], sig_b: list[int]) -> float:
     if not sig_a or not sig_b:
         return 0.0
     return sum(1 for x, y in zip(sig_a, sig_b) if x == y) / len(sig_a)
-
-def _fallback_refs(doc) -> list[dict]:
-    """参考文献回退：从出现 References/参考文献 的页开始，按 block 切分条目。"""
-    start = None
-    n = len(doc)
-    # 从文末往前找"独立成行"的 References 标题页（避免正文里提到 references）
-    for i in range(n - 1, max(0, int(n * 0.35)) - 1, -1):
-        try:
-            txt = doc[i].get_text("text") or ""
-        except Exception:
-            continue
-        lines = [ln.strip().lower().strip(":：.") for ln in txt.splitlines()]
-        if any(ln in ("references", "bibliography", "参考文献") or ln.startswith("references ") and len(ln) < 30 for ln in lines):
-            start = i
-            break
-        if re.search(r"参\s*考\s*文\s*献", txt):
-            start = i
-            break
-    if start is None:
-        return []
-    out, seen = [], set()
-    started = False
-    for pno in range(start, len(doc)):
-        page = doc[pno]
-        try:
-            blocks = page.get_text("blocks") or []
-        except Exception:
-            continue
-        for b in blocks:
-            if len(b) < 5:
-                continue
-            text = (b[4] or "").strip()
-            if len(text) < 30:
-                continue
-            bbox = [round(float(b[0]), 2), round(float(b[1]), 2),
-                    round(float(b[2]), 2), round(float(b[3]), 2)]
-            parts = re.split(r"(?=\[\d+\]\s)|(?=\n\d{1,3}[.)]\s)", "\n" + text)
-            for part in parts:
-                part = part.strip()
-                if len(part) < 25:
-                    continue
-                if not started:
-                    if len(part) > 40 and REF_LINE_RE.search(part):
-                        started = True
-                    else:
-                        continue
-                key = (pno, part[:40])
-                if key in seen:
-                    continue
-                seen.add(key)
-                if out and (part[:1].islower() or out[-1]["text"].endswith("-")) and len(part) < 200:
-                    out[-1]["text"] = (out[-1]["text"] + " " + part)[:600]
-                    continue
-                out.append({"page": pno + 1, "bbox": bbox, "text": part[:600]})
-                if len(out) >= 300:
-                    return out
-    return out
