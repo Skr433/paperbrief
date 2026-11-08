@@ -12,6 +12,12 @@ _REF_KEY = re.compile(r"^\[[\w\-+]{1,12}\]\s|^\d{1,3}[.)]\s")
 _REF_SKIP = re.compile(r"^(bib(liography)?|references|index|\d{1,4}|[ivxlcdm]{1,5})$", re.I)
 _REF_FOOT = re.compile(r"draft:|please send errata|creative commons|downloaded from|^\d{1,4}$", re.I)
 
+REF_LINE_RE = re.compile(
+    r"^\[\d+\]|^\d+[.)]\s|arXiv|Proceedings|Conference on|pp\.|vol\.|et al\.|"
+    r"University Press|Springer|IEEE|ACL|NeurIPS|ICML|ICLR|EMNLP|NAACL",
+    re.I,
+)
+
 
 def _page_lines(page):
     d = page.get_text("dict")

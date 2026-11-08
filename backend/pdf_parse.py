@@ -18,7 +18,7 @@ import unicodedata
 from collections import Counter
 
 # 解析版本号：改动解析逻辑时递增，服务端会据此自动失效旧缓存（避免"改了代码还看到旧结果"）
-PARSER_VERSION = "0.2.10"
+PARSER_VERSION = "0.2.11"
 
 AFFIL_NAMES = [
     "Google Brain", "Google Research", "Google", "University of Toronto", "University of Washington",
