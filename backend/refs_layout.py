@@ -120,9 +120,15 @@ def _refs_by_layout(doc) -> list[dict]:
                        "text": l["text"]}
             elif cur is not None:
                 cur["text"] = (cur["text"] + " " + l["text"])[:900]
-        low = " ".join(l["text"].lower() for l in lines[:6])
-        if pno > start + 1 and ("appendix" in low or "附录" in low):
+        low = " ".join(l["text"].lower() for l in lines[:12])
+        if pno > start + 1 and ("appendix" in low or "appendices" in low or "附录" in low):
             break
+        # 附录常见写法：单独一行 "A"/"B"/"C"，紧接标题（如 209 p19 / 2406 p15）
+        if pno > start + 1:
+            head8 = [l["text"].strip() for l in lines[:8]]
+            if any(re.match(r"^[A-Z]$", h) for h in head8) and not any(
+                    _REF_KEY.match(l["text"]) for l in lines[:6]):
+                break
     flush()
     # 尾处理：无年份/短碎片并入上一条（跨页断行残留）
     final = []

@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 from refs_layout import fallback_refs, refs_by_layout
+from figures import figures_from_drawings
 
 import hashlib
 import os
@@ -18,7 +19,7 @@ import unicodedata
 from collections import Counter
 
 # 解析版本号：改动解析逻辑时递增，服务端会据此自动失效旧缓存（避免"改了代码还看到旧结果"）
-PARSER_VERSION = "0.2.11"
+PARSER_VERSION = "0.2.12"
 
 AFFIL_NAMES = [
     "Google Brain", "Google Research", "Google", "University of Toronto", "University of Washington",
@@ -356,7 +357,9 @@ def parse_pdf(path: str) -> dict:
             refs[-1]["text"] = refs[-1]["text"][:600]
 
     # 回退：部分论文 References 标题未被识别为 heading；从文末倒扫参考文献样式段落
+    refs_source = "paragraphs"
     if len(refs) < 5:
+        refs_source = "tail"
         tail = [p for p in paragraphs
                 if p.get("kind") in ("body", "reference") and (p.get("text") or "").strip()]
         picked, misses = [], 0
@@ -378,12 +381,15 @@ def parse_pdf(path: str) -> dict:
         fb = fallback_refs(doc)
         if len(fb) >= 5:
             refs = fb
+            refs_source = "fallback"
 
-    # 旧逻辑明显失效（T5 作者起首、UDL 教材）→ 版式抽取
-    if len(refs) < 10 or (len(page_blocks) > 100 and len(refs) < 200):
+    # 旧逻辑明显失效（T5 作者起首、UDL 教材、附录混入）→ 版式抽取
+    if len(refs) < 10 or (len(page_blocks) > 100 and len(refs) < 200) \
+            or (refs_source != "paragraphs" and len(page_blocks) >= 8):
         try:
             _lay = refs_by_layout(doc)
-            if len(_lay) > max(30, len(refs) * 2):
+            if len(_lay) > max(30, len(refs) * 2) or (
+                    refs_source != "paragraphs" and len(_lay) >= 30):
                 refs = _lay
         except Exception:
             pass
@@ -401,6 +407,16 @@ def parse_pdf(path: str) -> dict:
         "body_font_size": body,
     }
     doc.close()
+
+    # 纯矢量图 PDF（T5 等）：raster 图为 0 时用 drawings 兜底
+    if not figures:
+        try:
+            import pymupdf as _mp
+            _vp = _mp.open(path)
+            figures = figures_from_drawings(_vp)
+            _vp.close()
+        except Exception:
+            figures = []
 
     captions = captions[:300]
     figures = figures[:300]
