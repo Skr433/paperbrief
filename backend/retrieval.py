@@ -214,6 +214,70 @@ def _fact_extra_anchors(parsed: dict, question: str, limit: int = 3) -> list[dic
             break
     return out
 
+_NUM_RE = re.compile(r"\d+(?:\.\d+)?")
+_WORD_RE = re.compile(r"[A-Za-z][A-Za-z\-]{2,}")
+
+
+def _precision_anchors(anchors: list[dict], question: str, answer_text: str,
+                       max_pages: int = 2, query_terms: list[str] | None = None) -> list[dict]:
+    """锚点精度：问题词做 IDF 加权，每页保留最强一条，弱页丢弃。"""
+    base = [a for a in anchors if a.get("page") and a.get("text")]
+    if len(base) <= 1:
+        return anchors
+
+    def toks(s: str) -> set:
+        out = {w.lower() for w in _WORD_RE.findall(s or "") if len(w) >= 3}
+        out |= set(_NUM_RE.findall(s or ""))
+        return out
+
+    q = {w.lower() for w in _WORD_RE.findall(question or "") if len(w) >= 3}
+    if query_terms:
+        q |= {w.lower() for w in query_terms if len(w) >= 2}
+    q_num = set(_NUM_RE.findall(question or ""))
+    q |= q_num
+
+    texts = [toks(a.get("text") or "") for a in base]
+    n = len(base)
+    df: dict = {}
+    for ts in texts:
+        for w in ts:
+            df[w] = df.get(w, 0) + 1
+
+    def weight(w: str) -> float:
+        d = df.get(w, 0) or 1
+        return 1.0 + (n / d)
+
+    scored = []
+    for a, ts in zip(base, texts):
+        hit = (q & ts)
+        s = sum(weight(w) for w in hit)
+        # 数值问题：锚点里有数字再加一点（但不能盖过问题词命中）
+        if q_num and (q_num & set(_NUM_RE.findall(a.get("text") or ""))):
+            s += 1.0
+        scored.append((s, a))
+
+    best_score = max(s for s, _ in scored)
+
+    # 同页保留最强一条
+    by_page: dict = {}
+    for s, a in scored:
+        pg = a["page"]
+        if pg not in by_page or s > by_page[pg][0]:
+            by_page[pg] = (s, a)
+    pages = sorted(by_page.items(), key=lambda kv: -kv[1][0])
+
+    keep = []
+    for pg, (s, a) in pages:
+        if best_score > 0 and s < best_score * 0.72:
+            continue
+        keep.append((s, a))
+        if len(keep) >= max_pages:
+            break
+    if not keep:
+        keep = [pages[0][1]]
+    return [a for _, a in keep]
+
+
 def ask(parsed: dict, question: str, topk: int = 3, extra_terms: str = "", doc_key: str = "") -> dict:
     """返回 {answer, anchors:[{page,bbox,text,score}], mode}。"""
     paras = [p for p in parsed["paragraphs"] if len(p["text"]) > 40]
@@ -325,7 +389,7 @@ def ask(parsed: dict, question: str, topk: int = 3, extra_terms: str = "", doc_k
     if not anchors:
         # 总结类问题（"这篇论文主要写了什么"）→ 摘要兜底，仍带页码锚点
         if _SUMMARY_RE.search(question):
-            ab = _abstract_anchors(parsed)
+            ab = _abstract_anchors(parsed)[:1]
             if ab:
                 return {
                     "mode": "rag",
@@ -343,6 +407,9 @@ def ask(parsed: dict, question: str, topk: int = 3, extra_terms: str = "", doc_k
         _seen.add(key)
         _ded.append(a)
     anchors = _ded
+
+    # 锚点精度：每页最强一条 + 丢掉弱相关页
+    anchors = _precision_anchors(anchors, question, " ".join(answer_bits), query_terms=q_tokens)
 
     return {
         "mode": "rag",
