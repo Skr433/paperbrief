@@ -118,6 +118,17 @@ def _version_of(name: str) -> int:
     return int(m.group(1)) if m else 0
 
 
+# 推荐演示论文：会议/期刊优先置顶（前端下拉框展示 ★ 与出处）
+RECOMMENDED = ["1706.03762v7.pdf", "2005.14165v4.pdf", "N19-1423.pdf"]
+VENUES = {
+    "1706.03762v7.pdf": ("会议", "NeurIPS 2017"),
+    "1706.03762v1.pdf": ("会议", "NeurIPS 2017"),
+    "2005.14165v4.pdf": ("会议", "NeurIPS 2020"),
+    "N19-1423.pdf": ("会议", "NAACL 2019"),
+    "1910.10683v4.pdf": ("期刊", "JMLR 2020"),
+}
+
+
 def library() -> list[dict]:
     out = []
     seen = set()
@@ -145,8 +156,20 @@ def library() -> list[dict]:
                     "size_kb": round(stat.st_size / 1024, 1),
                     "mtime": int(stat.st_mtime),
                     "source": "upload" if d == UPLOADS else "official",
+                    "recommended": fn in RECOMMENDED,
+                    "venue_type": VENUES.get(fn, ("", ""))[0],
+                    "venue_name": VENUES.get(fn, ("", ""))[1],
                 }
             )
+
+    # 排序：推荐演示优先（期刊在前、会议在后），其余保持原名顺序
+    def _rank(x: dict):
+        if x.get("recommended"):
+            v = 0 if x.get("venue_type") == "期刊" else 1
+            return (0, v, RECOMMENDED.index(x["name"]))
+        return (1, 0 if x.get("venue_type") else 1, x["name"])
+
+    out.sort(key=_rank)
     return out
 
 
@@ -497,7 +520,8 @@ def score_arxiv(items: list[dict], keywords: list[str], refs: list[str], llm_sor
             tags.append("本文引用过")
         if (it.get("llm_rank") is not None and it["llm_rank"] < 4) or (it.get("llm_rank") is None and matches >= 3):
             tags.append("同主题")
-        score = 22 * matches + (20 if cited else 0) + (8 if it.get("has_code") else 0) + (10 if it.get("venue_type") else 0)
+        score = 22 * matches + (20 if cited else 0) + (8 if it.get("has_code") else 0) \
+        + (14 if it.get("venue_type") == "期刊" else 10 if it.get("venue_type") == "会议" else 0)
         it["tags"] = tags
         it["score"] = round(min(100.0, score), 1)
     if not llm_sorted:
@@ -666,7 +690,9 @@ class Handler(SimpleHTTPRequestHandler):
                         items = arxiv.enrich_venues(items[:8])
                     except Exception:
                         pass
-                    items.sort(key=lambda x: (0 if x.get("venue_type") else 1, x.get("llm_rank", 99)))
+                    items.sort(key=lambda x: (0 if x.get("venue_type") else 1,
+                              0 if x.get("venue_type") == "期刊" else 1,
+                              x.get("llm_rank", 99)))
                     items = enrich_arxiv(items)
                 except Exception as e:
                     cached = _arxiv_cache_get(cache_key)

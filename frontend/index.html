@@ -441,7 +441,7 @@
   </div>
 
   <footer class="l-foot">
-    <span>PaperBrief v0.14.11 · 每条结论都能点回原文</span>
+    <span>PaperBrief v0.14.12 · 每条结论都能点回原文</span>
     <span><a href="#/about">技术说明与已知限制</a> · 第九届传智杯 · 科研小助手 Agent</span>
   </footer>
 </div>
@@ -460,7 +460,7 @@
     <p>扫描版 PDF 无 OCR；部分论文参考文献排版特殊时解析条数会偏少（已给出提示）；arXiv 从国内访问偶发超时，已做重试、缓存与友好提示；本地 3B 模型质量弱于云端，定位为离线演示。</p>
     <p><a href="https://github.com/Skr433/paperbrief">代码仓库</a> · <a href="#/app/brief">进入工作台</a></p>
   </section>
-  <footer class="l-foot"><span>PaperBrief v0.14.11</span><span>第九届传智杯 · 赛道 10040</span></footer>
+  <footer class="l-foot"><span>PaperBrief v0.14.12</span><span>第九届传智杯 · 赛道 10040</span></footer>
 </div>
 
 <div id="app-shell" style="display:none">
@@ -481,7 +481,7 @@
 <header>
   <a class="btn btn-home" href="#/" title="返回首页">⌂ 首页</a>
   <div class="logo">Paper<span>Brief</span></div>
-  <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.11</span></div>
+  <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.12</span></div>
   <div class="grow"></div>
   <select id="lib"><option>正在加载论文库…</option></select>
   <button id="btnParse" class="primary">解析并生成</button>
@@ -1326,14 +1326,28 @@ async function goPage(delta){
 $("#trPrev").onclick = ()=>goPage(-1);
 $("#trNext").onclick = ()=>goPage(1);
 
+function _libOption(x){
+  const label = (x.recommended ? "★ " : "") + x.name
+    + (x.venue_name ? "  · " + x.venue_name : "") + `  (${x.size_kb} KB)`;
+  const o = el("option", null, label);
+  o.value = x.name;
+  return o;
+}
+
 async function loadLibrary(){
   const d = await api("/api/library");
   S.libDocs = d.docs || [];
   const sel = $("#lib"); sel.innerHTML = "";
-  d.docs.forEach(x=>{
-    const o = el("option", null, `${x.name}  (${x.size_kb} KB)`);
-    o.value = x.name; sel.appendChild(o);
-  });
+  const rec = d.docs.filter(x=>x.recommended);
+  const rest = d.docs.filter(x=>!x.recommended);
+  if(rec.length){
+    const g = document.createElement("optgroup"); g.label = "★ 推荐演示（会议/期刊）";
+    rec.forEach(x=>g.appendChild(_libOption(x)));
+    sel.appendChild(g);
+  }
+  const g2 = document.createElement("optgroup"); g2.label = "全部论文";
+  rest.forEach(x=>g2.appendChild(_libOption(x)));
+  sel.appendChild(g2);
   const cb = $("#cmpB");
   if(cb){
     cb.innerHTML = "";
@@ -1359,14 +1373,20 @@ $("#btnCmp").onclick = async () => {
   if(!S.key){ hint("请先解析论文 A"); $("#cmpOut").innerHTML = '<div class="card">请先在顶部解析「论文 A」</div>'; return; }
   const bName = $("#cmpB").value;
   const q = $("#cmpQ").value.trim() || "请对比这两篇论文的核心方法与差异。";
-  $("#cmpOut").innerHTML = '<div class="card">对比中…（约 3–8 秒）</div>';
+  const stop = spinner($("#cmpOut"), "对比中（约 3–8 秒）");
   try{
     const bMeta = await api("/api/parse?name="+encodeURIComponent(bName), {method:"POST"});
     const k2 = bMeta.key;
     const r = await api("/api/compare", {method:"POST", body:JSON.stringify({k1:S.key, k2, q})});
+    stop();
     renderCompare(r);
   }catch(e){
-    $("#cmpOut").innerHTML = '<div class="card">对比失败：'+e.message+'</div>';
+    stop();
+    $("#cmpOut").innerHTML = "";
+    const card = el("div","card","对比失败："+e.message);
+    const b = el("button", null, "重试"); b.onclick = $("#btnCmp").onclick;
+    card.appendChild(b);
+    $("#cmpOut").appendChild(card);
   }
 };
 
@@ -1423,19 +1443,35 @@ async function parseCurrent(){
 
 async function doBrief(){
   if(!S.key){ $("#brief").innerHTML = '<div class="card">请先解析一篇论文</div>'; return; }
-  $("#brief").innerHTML = '<div class="card">生成中…</div>';
+  const stop = spinner($("#brief"), "生成汇报包中");
   try{
     S.brief = await api("/api/brief?key="+S.key);
+    stop();
     renderBrief(S.brief);
-  }catch(e){ $("#brief").innerHTML = '<div class="card">生成失败：'+e.message+'</div>'; }
+  }catch(e){
+    stop();
+    $("#brief").innerHTML = "";
+    const card = el("div","card","生成失败："+e.message);
+    const b = el("button", null, "重试"); b.onclick = doBrief;
+    card.appendChild(b);
+    $("#brief").appendChild(card);
+  }
 }
 
 $("#btnParse").onclick = async () => {
-  const d = await parseCurrent();
-  if(d) await doBrief();
+  const b = $("#btnParse");
+  busy(b, true, "解析中…");
+  try {
+    const d = await parseCurrent();
+    if(d) await doBrief();
+  } finally { busy(b, false); }
 };
 
-$("#btnParseOnly").onclick = async () => { await parseCurrent(); };
+$("#btnParseOnly").onclick = async () => {
+  const b = $("#btnParseOnly");
+  busy(b, true, "解析中…");
+  try { await parseCurrent(); } finally { busy(b, false); }
+};
 
 $("#btnDemo").onclick = async () => {
   await loadLibrary();
@@ -1644,10 +1680,21 @@ function goDup(){
 $("#btnAsk").onclick = doAsk;
 $("#q").addEventListener("keydown", e=>{ if(e.key==="Enter") doAsk(); });
 async function doAsk(){
-  const q = $("#q").value.trim(); if(!q || !S.key) return;
+  const q = $("#q").value.trim(); if(!q) return;
+  if(!S.key){ hint("请先选择论文并解析"); return; }
   const box = $("#answers");
-  box.innerHTML = '<div class="card">检索中…</div>';
-  const r = await api("/api/ask?key="+S.key, {method:"POST", body:JSON.stringify({q})});
+  const stop = spinner(box, "检索中");
+  let r;
+  try{
+    r = await api("/api/ask?key="+S.key, {method:"POST", body:JSON.stringify({q})});
+  }catch(e){
+    stop(); box.innerHTML = "";
+    const card = el("div","card","生成失败："+e.message);
+    const b = el("button", null, "重试"); b.onclick = doAsk;
+    card.appendChild(b); box.appendChild(card);
+    return;
+  }
+  stop();
   box.innerHTML = "";
   const c = el("div","card");
   const isAI = (r.mode||"").indexOf("llm") === 0;
@@ -1802,6 +1849,31 @@ function initNav(){
 
 initNav();
 route();
+
+function busy(btn, on, text){
+  if(!btn) return;
+  if(on){
+    if(!btn.dataset.old) btn.dataset.old = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = text || "处理中…";
+  } else {
+    btn.disabled = false;
+    if(btn.dataset.old){ btn.textContent = btn.dataset.old; delete btn.dataset.old; }
+  }
+}
+
+function spinner(box, label){
+  box.innerHTML = "";
+  const c = document.createElement("div");
+  c.className = "card";
+  c.textContent = label + "…";
+  box.appendChild(c);
+  const t0 = Date.now();
+  const tm = setInterval(()=>{
+    c.textContent = label + "… " + Math.floor((Date.now() - t0) / 1000) + "s";
+  }, 500);
+  return ()=>{ clearInterval(tm); };
+}
 
 function hint(msg){
   let box = document.getElementById("toast");
