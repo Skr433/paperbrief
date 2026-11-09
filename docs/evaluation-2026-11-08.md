@@ -121,6 +121,17 @@
 延迟（线上）：单篇 1.0–1.9s，多篇 3.6–5.5s；同题 3 次相似度 1.0。
 live health：`parser_version 0.2.4`、`provider deepseek:deepseek-chat`、`hybrid true`。
 
+
+### 3.5 线上 v0.14.10 最终验收（2026-11-09）
+
+| 项 | 结果 |
+| --- | --- |
+| health | `parser_version 0.2.11`、`provider deepseek:deepseek-chat`、`hybrid true` |
+| 40 篇全量解析 | **40/40 成功，0 失败**，总耗时 109.4s（最慢 541 页教材 17.0s、Llama3 30.6s） |
+| 9 题回归 | 单篇 **5/5 正确**（①1.0s ②2.1s ③1.6s ④2.3s ⑤1.1s）；多篇 ⑥✅、⑦⑧⑨🟡（缺 GPT-2 原文） |
+| 模块 | brief 2.2s（summary/speech 别名生效）、translate 13 条、graph 21 节点/40 边、chart SVG 2466、citations 20、错误路径 404 |
+| arXiv 降级 | 实测 **stale=true 缓存兜底生效**（请求 40.3s 后返回 8 条缓存），D15 验证通过 |
+
 ## 四、模块可靠性（30/30 成功）
 
 测试时间 2026-11-08 15:58–16:00（当时线上 v0.14.4），10 个模块 × 3 轮 + 并发 3×3：
