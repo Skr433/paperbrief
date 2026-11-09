@@ -204,6 +204,13 @@ def do_parse(name: str) -> tuple[int, str, bytes]:
     key = _key_of(path)
     cached = _load(key)
     if cached:
+        # 旧缓存可能没有 fingerprint：懒补一次，否则重复检测会漏（v1 vs v7 用例）
+        if not cached.get("fingerprint"):
+            try:
+                cached["fingerprint"] = fingerprint(cached)
+                _save(key, cached)
+            except Exception:
+                cached["fingerprint"] = []
         return _json({"cached": True, "key": key, "doc": _summary(cached), "stats": _summary(cached)["stats"], "duplicate": _dup(cached)})
 
     with _lock:
@@ -244,6 +251,89 @@ def _dup(parsed: dict) -> dict | None:
                 "newer": _version_of(row["file"]) > _version_of(parsed["meta"]["file"]),
             }
     return best
+
+
+def _norm_paras(parsed: dict, limit: int = 1200) -> list[str]:
+    out = []
+    for p in parsed.get("paragraphs", []):
+        if p.get("kind") not in ("body", "heading"):
+            continue
+        txt = " ".join((p.get("text") or "").split())
+        if len(txt) >= 20:
+            out.append(txt)
+        if len(out) >= limit:
+            break
+    return out
+
+
+def do_diff(k1: str, k2: str) -> tuple[int, str, bytes]:
+    import difflib
+
+    a = _load(k1)
+    b = _load(k2)
+    if not a or not b:
+        return _json({"error": "文档不存在或未解析，请先解析"}, 404)
+
+    pa, pb = _norm_paras(a), _norm_paras(b)
+    sa = [s.get("title", "") for s in a.get("sections", [])]
+    sb = [s.get("title", "") for s in b.get("sections", [])]
+
+    sm = difflib.SequenceMatcher(None, pa, pb, autojunk=False)
+    added, removed, changed = [], [], []
+    for tag, i1, i2, j1, j2 in sm.get_opcodes():
+        if tag == "insert":
+            added.extend(pb[j1:j2])
+        elif tag == "delete":
+            removed.extend(pa[i1:i2])
+        elif tag == "replace":
+            for x, y in zip(pa[i1:i2], pb[j1:j2]):
+                changed.append({"a": x[:240], "b": y[:240]})
+            if (i2 - i1) > (j2 - j1):
+                removed.extend(pa[j1 + (j2 - j1):i2])
+            elif (j2 - j1) > (i2 - i1):
+                added.extend(pb[i1 + (i2 - i1):j2])
+
+    sa_set, sb_set = set(sa), set(sb)
+    sec_added = [x for x in sb if x not in sa_set][:6]
+    sec_removed = [x for x in sa if x not in sb_set][:6]
+
+    # 版本号比较（文件名 v1 / v7）
+    va, vb = _version_of(a["meta"]["file"]), _version_of(b["meta"]["file"])
+    stats = {
+        "paragraphs_a": len(pa), "paragraphs_b": len(pb),
+        "added": len(added), "removed": len(removed), "changed": len(changed),
+        "sections_added": len(sec_added), "sections_removed": len(sec_removed),
+    }
+
+    summary, mode = "", "extractive"
+    if llm.available():
+        try:
+            llm_summary = llm.summarize_diff(a["meta"].get("title", ""), b["meta"].get("title", ""),
+                                            sec_added, sec_removed, added[:8], removed[:8], changed[:8])
+            if llm_summary:
+                summary, mode = llm_summary, "llm"
+        except Exception:
+            pass
+    if not summary:
+        bits = []
+        if sec_added:
+            bits.append("新增章节：" + "、".join(sec_added[:4]))
+        if sec_removed:
+            bits.append("删除章节：" + "、".join(sec_removed[:4]))
+        bits.append(f"段落新增 {len(added)}、删除 {len(removed)}、改写 {len(changed)}")
+        summary = "；".join(bits)
+
+    return _json({
+        "a": {"key": k1, "file": a["meta"]["file"], "title": a["meta"].get("title", ""),
+              "pages": a["meta"].get("pages"), "version": va},
+        "b": {"key": k2, "file": b["meta"]["file"], "title": b["meta"].get("title", ""),
+              "pages": b["meta"].get("pages"), "version": vb},
+        "stats": stats,
+        "sections": {"added": sec_added, "removed": sec_removed},
+        "sample": {"added": added[:5], "removed": removed[:5], "changed": changed[:5]},
+        "summary": summary,
+        "mode": mode,
+    })
 
 
 def render_page(key: str, n: int) -> tuple[int, str, bytes]:
@@ -604,6 +694,8 @@ class Handler(SimpleHTTPRequestHandler):
                                           "parser_version": PARSER_VERSION}))
             if u.path == "/api/library":
                 return self._send(*_json({"docs": library()}))
+            if u.path == "/api/diff":
+                return self._send(*do_diff(q.get("k1", [""])[0], q.get("k2", [""])[0]))
             if u.path == "/api/doc":
                 key = q.get("key", [""])[0]
                 parsed = _load(key)

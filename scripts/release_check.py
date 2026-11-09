@@ -57,6 +57,7 @@ def main():
         return _f
 
     key = {}
+    key_pair = {}
 
     def parse_attention():
         d, dt = _req(base, "/api/parse?name=" + urllib.parse.quote("1706.03762v7.pdf"), {})
@@ -103,6 +104,21 @@ def main():
         assert r.get("svg"), "无 SVG"
         return "%.1fs" % dt
 
+    def version_dedupe():
+        v7, _ = _req(base, "/api/parse?name=" + urllib.parse.quote("1706.03762v7.pdf"), {})
+        v1, _ = _req(base, "/api/parse?name=" + urllib.parse.quote("1706.03762v1.pdf"), {})
+        dup = v1.get("duplicate") or {}
+        assert dup.get("file"), "v1 未检测到 v7 重复"
+        assert (dup.get("similarity") or 0) >= 0.6, "相似度过低"
+        key_pair["v1"], key_pair["v7"] = v1["key"], v7["key"]
+        return "v1→v7 相似度 %.2f" % dup["similarity"]
+
+    def version_diff():
+        r, dt = _req(base, "/api/diff?k1=%s&k2=%s" % (key_pair["v1"], key_pair["v7"]), timeout=120)
+        assert r.get("summary"), "差异摘要为空"
+        st = r.get("stats") or {}
+        return "mode=%s +%s/-%s/改%s %.1fs" % (r.get("mode"), st.get("added"), st.get("removed"), st.get("changed"), dt)
+
     def error_path():
         try:
             _req(base, "/api/brief?key=not-exist", timeout=30)
@@ -121,6 +137,8 @@ def main():
     check("translate", translate)
     check("graph", graph)
     check("chart", chart)
+    check("版本去重 v1/v7", version_dedupe)
+    check("版本差异 diff", version_diff)
     check("error 404", error_path)
 
     bad = [r for r in results if r[1] == FAIL]

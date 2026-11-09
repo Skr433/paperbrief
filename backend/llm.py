@@ -313,3 +313,26 @@ def _chat_ollama(messages: list[dict], oc: dict, temperature: float, timeout: in
     except Exception as e:
         raise RuntimeError("Ollama: " + str(e)[:150])
     return ((data.get("message") or {}).get("content") or "").strip()
+
+def summarize_diff(title_a: str, title_b: str, sec_added, sec_removed,
+                   added, removed, changed) -> str:
+    """版本差异摘要：只依据 diff 结果，不编造。"""
+    parts = []
+    if sec_added:
+        parts.append("新增章节：" + "、".join(sec_added[:5]))
+    if sec_removed:
+        parts.append("删除章节：" + "、".join(sec_removed[:5]))
+    if added:
+        parts.append("新增段落示例：" + " | ".join(x[:120] for x in added[:3]))
+    if removed:
+        parts.append("删除段落示例：" + " | ".join(x[:120] for x in removed[:3]))
+    if changed:
+        parts.append("改写示例：" + " | ".join((c["a"][:80] + " → " + c["b"][:80]) for c in changed[:3]))
+    ctx = "\n".join(parts)[:2400]
+    prompt = ("下面是一篇论文两个版本的自动差异结果（A→B）。请用 3–5 条中文概括主要修订，"
+              "只依据给出的内容，不要推测未出现的改动。\n\n" + ctx)
+    try:
+        return chat([{"role": "system", "content": "你是严谨的论文版本差异分析助手。"},
+                      {"role": "user", "content": prompt}], max_tokens=400).strip()
+    except Exception:
+        return ""

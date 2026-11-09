@@ -395,7 +395,7 @@
   <header class="l-head">
     <a class="btn btn-home" href="#/" title="返回首页">⌂ 首页</a>
     <div class="logo">Paper<span>Brief</span></div>
-    <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.15</span></div>
+    <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.16</span></div>
     <div class="grow"></div>
     <a class="btn" href="#/about">关于</a>
     <a class="btn btn-primary" href="#/app/brief">进入工作台</a>
@@ -441,7 +441,7 @@
   </div>
 
   <footer class="l-foot">
-    <span>PaperBrief v0.14.15 · 每条结论都能点回原文</span>
+    <span>PaperBrief v0.14.16 · 每条结论都能点回原文</span>
     <span><a href="#/about">技术说明与已知限制</a> · 第九届传智杯 · 科研小助手 Agent</span>
   </footer>
 </div>
@@ -450,7 +450,7 @@
   <header class="l-head">
     <a class="btn btn-home" href="#/" title="返回首页">⌂ 首页</a>
     <div class="logo">Paper<span>Brief</span></div>
-    <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.15</span></div>
+    <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.16</span></div>
     <div class="grow"></div>
     <a class="btn btn-primary" href="#/app/brief">进入工作台</a>
   </header>
@@ -463,7 +463,7 @@
     <p>扫描版 PDF 无 OCR；部分论文参考文献排版特殊时解析条数会偏少（已给出提示）；arXiv 从国内访问偶发超时，已做重试、缓存与友好提示；本地 3B 模型质量弱于云端，定位为离线演示。</p>
     <p><a href="https://github.com/Skr433/paperbrief">代码仓库</a> · <a href="#/app/brief">进入工作台</a></p>
   </section>
-  <footer class="l-foot"><span>PaperBrief v0.14.15</span><span>第九届传智杯 · 赛道 10040</span></footer>
+  <footer class="l-foot"><span>PaperBrief v0.14.16</span><span>第九届传智杯 · 赛道 10040</span></footer>
 </div>
 
 <div id="app-shell" style="display:none">
@@ -484,7 +484,7 @@
 <header>
   <a class="btn btn-home" href="#/" title="返回首页">⌂ 首页</a>
   <div class="logo">Paper<span>Brief</span></div>
-  <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.15</span></div>
+  <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.16</span></div>
   <div class="grow"></div>
   <select id="lib"><option>正在加载论文库…</option></select>
   <button id="btnParse" class="primary">解析并生成</button>
@@ -1706,12 +1706,63 @@ function renderDup(dup){
   n.style.display = "block";
   n.innerHTML = `⚠ <b>发现内容重复</b>：${dup.file}（相似度 <b>${(dup.similarity*100).toFixed(1)}%</b>）· ` +
     (dup.newer ? "库中版本更新，<b>建议保留库中版本</b>" : "本次上传版本较新，可覆盖库中版本") +
-    ` <span class="anchor" id="noticeJump">查看该论文</span>`;
+    ` <span class="anchor" id="noticeJump">查看该论文</span>` +
+    ` <span class="anchor" id="noticeDiff">对比版本差异</span>`;
   $("#noticeJump").onclick = goDup;
+  if($("#noticeDiff")) $("#noticeDiff").onclick = ()=>showVersionDiff(S.key, dup.key);
   d.innerHTML = `<span class="warn">发现可能重复：</span>${dup.file}<br/>相似度 <b>${(dup.similarity*100).toFixed(1)}%</b> · ` +
     (dup.newer ? "库中版本更新，建议保留库中版本" : "本次上传版本较新，可覆盖") +
-    ` <span class="anchor">查看该论文</span>`;
-  d.querySelector(".anchor").onclick = goDup;
+    ` <span class="anchor" id="dupDiff">对比版本差异</span>`;
+  const dd = $("#dupDiff"); if(dd) dd.onclick = ()=>showVersionDiff(S.key, dup.key);
+}
+
+async function showVersionDiff(k1, k2){
+  const box = $("#brief");
+  box.innerHTML = '<div class="card">正在比较两个版本…</div>';
+  try{
+    const r = await api(`/api/diff?k1=${encodeURIComponent(k1)}&k2=${encodeURIComponent(k2)}`);
+    box.innerHTML = "";
+    const c = el("div","card");
+    c.appendChild(el("h3", null, `版本差异：${r.a.version} → ${r.b.version}`));
+    c.appendChild(el("div","muted", `${r.a.file}（${r.a.pages} 页） → ${r.b.file}（${r.b.pages} 页）`));
+    const tag = el("span","pill", r.mode === "llm" ? "AI 归纳" : "规则归纳");
+    tag.style.cssText = "margin-left:6px";
+    c.querySelector("h3").appendChild(tag);
+    c.appendChild(el("div","ans", r.summary || "（无摘要）"));
+
+    const st = r.stats || {};
+    const stats = el("div","meta", "");
+    stats.style.cssText = "margin:8px 0;color:#4b5563;font-size:13px";
+    stats.textContent = `段落：+${st.added} / -${st.removed} / 改写 ${st.changed}；章节：+${st.sections_added} / -${st.sections_removed}`;
+    c.appendChild(stats);
+
+    if((r.sections.added||[]).length || (r.sections.removed||[]).length){
+      const sec = el("div", null, "");
+      sec.appendChild(el("b", null, "章节变化"));
+      if(r.sections.added.length) sec.appendChild(el("div","muted","新增：" + r.sections.added.join("、")));
+      if(r.sections.removed.length) sec.appendChild(el("div","muted","删除：" + r.sections.removed.join("、")));
+      c.appendChild(sec);
+    }
+    const list = (title, arr, cls) => {
+      if(!arr || !arr.length) return;
+      const sec = el("div", null, "");
+      sec.appendChild(el("b", null, title));
+      arr.forEach(x=>sec.appendChild(el("div", cls || "item", typeof x === "string" ? x : (x.a + " → " + x.b))));
+      c.appendChild(sec);
+    };
+    list("新增段落（示例）", r.sample.added);
+    list("删除段落（示例）", r.sample.removed);
+    list("改写段落（示例）", r.sample.changed);
+    const back = el("button", null, "返回汇报包");
+    back.onclick = doBrief;
+    c.appendChild(back);
+    box.appendChild(c);
+  }catch(e){
+    box.innerHTML = "";
+    const c = el("div","card", "版本对比失败：" + e.message);
+    const b = el("button", null, "重试"); b.onclick = ()=>showVersionDiff(k1,k2);
+    c.appendChild(b); box.appendChild(c);
+  }
 }
 
 function goDup(){

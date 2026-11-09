@@ -19,7 +19,7 @@ import unicodedata
 from collections import Counter
 
 # 解析版本号：改动解析逻辑时递增，服务端会据此自动失效旧缓存（避免"改了代码还看到旧结果"）
-PARSER_VERSION = "0.2.12"
+PARSER_VERSION = "0.2.13"
 
 AFFIL_NAMES = [
     "Google Brain", "Google Research", "Google", "University of Toronto", "University of Washington",
@@ -455,7 +455,8 @@ def fingerprint(parsed: dict, k: int = 5) -> list[int]:
         return [0] * 64
     rnd = random.Random(20261031)
     params = [(rnd.randrange(1, 2**31 - 1), rnd.randrange(0, 2**31 - 1)) for _ in range(64)]
-    hs = [(hash(s) & 0xFFFFFFFF) for s in sh]
+    import zlib
+    hs = [(zlib.crc32(s.encode("utf-8")) & 0xFFFFFFFF) for s in sh]
     return [min((a * h + b) % (2**31 - 1) for h in hs) for a, b in params]
 
 def jaccard(sig_a: list[int], sig_b: list[int]) -> float:
