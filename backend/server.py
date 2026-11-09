@@ -520,8 +520,7 @@ def score_arxiv(items: list[dict], keywords: list[str], refs: list[str], llm_sor
             tags.append("本文引用过")
         if (it.get("llm_rank") is not None and it["llm_rank"] < 4) or (it.get("llm_rank") is None and matches >= 3):
             tags.append("同主题")
-        score = 22 * matches + (20 if cited else 0) + (8 if it.get("has_code") else 0) \
-        + (14 if it.get("venue_type") == "期刊" else 10 if it.get("venue_type") == "会议" else 0)
+        score = 22 * matches + (20 if cited else 0) + (8 if it.get("has_code") else 0) + (10 if it.get("venue_type") else 0)
         it["tags"] = tags
         it["score"] = round(min(100.0, score), 1)
     if not llm_sorted:
@@ -690,9 +689,7 @@ class Handler(SimpleHTTPRequestHandler):
                         items = arxiv.enrich_venues(items[:8])
                     except Exception:
                         pass
-                    items.sort(key=lambda x: (0 if x.get("venue_type") else 1,
-                              0 if x.get("venue_type") == "期刊" else 1,
-                              x.get("llm_rank", 99)))
+                    items.sort(key=lambda x: (0 if x.get("venue_type") else 1, x.get("llm_rank", 99)))
                     items = enrich_arxiv(items)
                 except Exception as e:
                     cached = _arxiv_cache_get(cache_key)

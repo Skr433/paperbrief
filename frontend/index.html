@@ -157,6 +157,8 @@
   .glegend span{background:#fff;border:1px solid var(--line);color:var(--muted)}
   #gTip{background:#fff;border:1px solid var(--line);color:var(--txt);box-shadow:0 8px 24px rgba(0,0,0,.12)}
   #graphDetail{color:var(--txt)}
+  .outline div{color:#374151}
+  .outline div:hover{background:#f1f3f5;color:#1f2937}
   /* 全局字号 +1：12/14/16/18 -> 13/15/17/19 */
   body{font-size:15px}
   .logo{font-size:19px}
@@ -441,7 +443,7 @@
   </div>
 
   <footer class="l-foot">
-    <span>PaperBrief v0.14.12 · 每条结论都能点回原文</span>
+    <span>PaperBrief v0.14.13 · 每条结论都能点回原文</span>
     <span><a href="#/about">技术说明与已知限制</a> · 第九届传智杯 · 科研小助手 Agent</span>
   </footer>
 </div>
@@ -460,7 +462,7 @@
     <p>扫描版 PDF 无 OCR；部分论文参考文献排版特殊时解析条数会偏少（已给出提示）；arXiv 从国内访问偶发超时，已做重试、缓存与友好提示；本地 3B 模型质量弱于云端，定位为离线演示。</p>
     <p><a href="https://github.com/Skr433/paperbrief">代码仓库</a> · <a href="#/app/brief">进入工作台</a></p>
   </section>
-  <footer class="l-foot"><span>PaperBrief v0.14.12</span><span>第九届传智杯 · 赛道 10040</span></footer>
+  <footer class="l-foot"><span>PaperBrief v0.14.13</span><span>第九届传智杯 · 赛道 10040</span></footer>
 </div>
 
 <div id="app-shell" style="display:none">
@@ -481,7 +483,7 @@
 <header>
   <a class="btn btn-home" href="#/" title="返回首页">⌂ 首页</a>
   <div class="logo">Paper<span>Brief</span></div>
-  <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.12</span></div>
+  <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.13</span></div>
   <div class="grow"></div>
   <select id="lib"><option>正在加载论文库…</option></select>
   <button id="btnParse" class="primary">解析并生成</button>
@@ -1008,19 +1010,19 @@ function forceLayout(nodes, edges, W, H){
   const refs = nodes.filter(n => !n.is_root);
   refs.forEach((n, i) => {
     const a = Math.PI * 2 * i / Math.max(1, refs.length);
-    const r = 110 + Math.min(100, i * 3);
+    const r = 120 + Math.min(110, i * 4);
     pos[n.id] = { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a), vx: 0, vy: 0 };
   });
   pos["root"] = { x: cx, y: cy, vx: 0, vy: 0 };
   const ids = Object.keys(pos);
   const links = (edges || []).filter(e => pos[e.source] && pos[e.target]);
-  for(let it = 0; it < 320; it++){
+  for(let it = 0; it < 380; it++){
     for(let i = 0; i < ids.length; i++){
       for(let j = i + 1; j < ids.length; j++){
         const a = pos[ids[i]], b = pos[ids[j]];
         let dx = b.x - a.x, dy = b.y - a.y, d2 = dx * dx + dy * dy;
         if(d2 < 1) d2 = 1;
-        const d = Math.sqrt(d2), f = 1900 / d2;
+        const d = Math.sqrt(d2), f = 2600 / d2;
         const fx = f * dx / d, fy = f * dy / d;
         a.vx -= fx; a.vy -= fy; b.vx += fx; b.vy += fy;
       }
@@ -1029,14 +1031,19 @@ function forceLayout(nodes, edges, W, H){
       const a = pos[e.source], b = pos[e.target];
       let dx = b.x - a.x, dy = b.y - a.y;
       const d = Math.sqrt(dx * dx + dy * dy) || 1;
-      const target = e.type === "co-cite" ? 95 : 135;
+      const target = e.type === "co-cite" ? 100 : 150;
       const f = (d - target) * 0.012;
       const fx = f * dx / d, fy = f * dy / d;
       a.vx += fx; a.vy += fy; b.vx -= fx; b.vy -= fy;
     });
-    ids.forEach(id => { const p = pos[id]; p.vx += (cx - p.x) * 0.004; p.vy += (cy - p.y) * 0.004; });
+    ids.forEach(id => { const p = pos[id]; p.vx += (cx - p.x) * 0.006; p.vy += (cy - p.y) * 0.006; });
     ids.forEach(id => { const p = pos[id]; p.x += p.vx * 0.6; p.y += p.vy * 0.6; p.vx *= 0.85; p.vy *= 0.85; });
   }
+  ids.forEach(id => {
+    const p = pos[id];
+    p.x = Math.max(36, Math.min(W - 36, p.x));
+    p.y = Math.max(36, Math.min(H - 36, p.y));
+  });
   return pos;
 }
 
@@ -1129,6 +1136,12 @@ function renderGraph(g){
   const W = 760, H = 500;
   const svg = gEl("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", height: "460" });
   svg.style.cssText = "background:#ffffff;border:1px solid #e5e7eb;border-radius:8px;cursor:grab;display:block;touch-action:none";
+  const defs = gEl("defs", {});
+  const pat = gEl("pattern", { id: "dots", width: 24, height: 24, patternUnits: "userSpaceOnUse" });
+  pat.appendChild(gEl("circle", { cx: 2, cy: 2, r: 1.1, fill: "#e2e8f0" }));
+  defs.appendChild(pat);
+  svg.appendChild(defs);
+  svg.appendChild(gEl("rect", { x: 0, y: 0, width: W, height: H, fill: "url(#dots)" }));
   const vp = gEl("g", {});
   svg.appendChild(vp);
   const pos = forceLayout(g.nodes, g.edges, W, H);
@@ -1137,19 +1150,33 @@ function renderGraph(g){
   (g.edges || []).forEach(e => {
     const a = pos[e.source], b = pos[e.target];
     if(!a || !b) return;
-    const line = gEl("line", {
-      x1: a.x, y1: a.y, x2: b.x, y2: b.y,
-      stroke: e.type === "co-cite" ? "#f59e0b" : (e.type === "similar" ? "#93c5fd" : "#cbd5e1"),
-      "stroke-width": e.type === "co-cite" ? 1.5 : 1,
-      "stroke-dasharray": e.type === "similar" ? "3 3" : ""
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const d = Math.sqrt(dx * dx + dy * dy) || 1;
+    const bend = e.type === "co-cite" ? 24 : (e.type === "similar" ? 14 : 18);
+    const mx = (a.x + b.x) / 2 - dy / d * bend;
+    const my = (a.y + b.y) / 2 + dx / d * bend;
+    const line = gEl("path", {
+      d: `M ${a.x} ${a.y} Q ${mx} ${my} ${b.x} ${b.y}`,
+      fill: "none",
+      stroke: e.type === "co-cite" ? "#f59e0b" : (e.type === "similar" ? "#93c5fd" : "#d1d5db"),
+      "stroke-width": e.type === "co-cite" ? 1.6 : 1.1,
+      "stroke-opacity": e.type === "co-cite" ? 0.9 : 0.75,
+      "stroke-dasharray": e.type === "similar" ? "4 4" : ""
     });
     vp.appendChild(line);
   });
 
   const tip = $("#gTip");
+  const refNodes = (g.nodes || []).filter(n => !n.is_root);
+  const labelSet = new Set(
+    [...refNodes].sort((a, b) => (b.cited_by || 0) - (a.cited_by || 0)).slice(0, 8).map(n => n.id)
+  );
+  if(pos.root){
+    vp.appendChild(gEl("circle", { cx: pos.root.x, cy: pos.root.y, r: 24, fill: "#dbeafe", "fill-opacity": 0.9 }));
+  }
   (g.nodes || []).forEach(nd => {
     const p = pos[nd.id]; if(!p) return;
-    const r = nd.is_root ? 16 : Math.min(14, 5 + Math.log10((nd.cited_by || 0) + 1) * 2.4);
+    const r = nd.is_root ? 18 : 7 + Math.min(9, Math.log10((nd.cited_by || 1) + 1) * 3.2);
     const c = gEl("circle", {
       cx: p.x, cy: p.y, r: r,
       fill: nd.is_root ? "#2563eb" : themeColor(nd),
@@ -1170,13 +1197,24 @@ function renderGraph(g){
     c.onclick = () => showDetail(nd);
     vp.appendChild(c);
     if(!nd.is_root){
-      const idx = g.nodes.filter(n => !n.is_root).indexOf(nd) + 1;
-      const txt = gEl("text", {
-        x: p.x, y: p.y + 3.5, "text-anchor": "middle", "font-size": "10", fill: "#1f2937"
-      });
-      txt.textContent = String(idx);
-      txt.style.pointerEvents = "none";
-      vp.appendChild(txt);
+      const idx = refNodes.indexOf(nd) + 1;
+      if(labelSet.has(nd.id)){
+        const title = (nd.title || "").replace(/\s+/g, " ").trim();
+        const short = title.length > 14 ? title.slice(0, 14) + "…" : title;
+        const txt = gEl("text", {
+          x: p.x, y: p.y + r + 13, "text-anchor": "middle", "font-size": "9.5", fill: "#4b5563"
+        });
+        txt.textContent = short;
+        txt.style.pointerEvents = "none";
+        vp.appendChild(txt);
+      } else {
+        const txt = gEl("text", {
+          x: p.x, y: p.y + 3.5, "text-anchor": "middle", "font-size": "10", fill: "#1f2937"
+        });
+        txt.textContent = String(idx);
+        txt.style.pointerEvents = "none";
+        vp.appendChild(txt);
+      }
     } else {
       const txt = gEl("text", { x: p.x, y: p.y + 3.5, "text-anchor": "middle", "font-size": "10", fill: "#ffffff" });
       txt.textContent = "本文";
@@ -1642,7 +1680,13 @@ function renderStruct(d){
   $("#docinfo").innerHTML = `<b>${d.doc.title}</b><br/>${d.doc.file}<br/>
     页数 ${d.doc.pages} · 段落 ${st.n_paragraphs} · 章节 ${st.n_sections} · 图表 ${st.n_captions} · 参考文献 ${st.n_references}`;
   const o = $("#outline"); o.innerHTML = "";
-  d.doc.outline.forEach(x=>{
+  // 过滤表格/公式碎片（如 O(1)、125M、0.5M），只保留真正的章节标题
+  const junk = /^[OΘΩo]\s*\(\d+\)$|^\d+(\.\d+)?\s*[MKBGT]?%?$/;
+  const items = (d.doc.outline || []).filter(x => {
+    const t = (x.title || "").trim();
+    return t.length >= 2 && !junk.test(t);
+  });
+  items.forEach(x=>{
     const div = el("div", null, ("　".repeat(Math.max(0,x.level-1)))+x.title);
     div.onclick = ()=>jump(x.page, null);
     o.appendChild(div);
