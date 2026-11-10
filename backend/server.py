@@ -377,8 +377,16 @@ def _agent_parse(name: str):
 def do_diff(k1: str, k2: str) -> tuple[int, str, bytes]:
     import difflib
 
-    a = _load(k1)
-    b = _load(k2)
+    def _resolve(name_or_key):
+        doc = _load(name_or_key)
+        if doc:
+            return doc
+        if _find_pdf(name_or_key):
+            _, _k = _agent_parse(name_or_key)
+            return _load(_k)
+        return None
+
+    a, b = _resolve(k1), _resolve(k2)
     if not a or not b:
         return _json({"error": "文档不存在或未解析，请先解析"}, 404)
 
