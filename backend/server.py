@@ -327,7 +327,7 @@ def do_agent(question: str, cur_key: str = "") -> tuple[int, str, bytes]:
         tool = "brief"
     elif any(k in question for k in ("图谱", "引文网络", "引用关系", "核心节点")):
         tool = "graph"
-    elif any(k in question for k in ("未来方向", "future work", "后续研究", "研究展望")):
+    elif any(k in question for k in ("未来方向", "未来研究", "future work", "后续研究", "研究展望")):
         tool = "future"
     elif any(k in question for k in ("差异", "版本对比", "改了什么", "修订")):
         tool = "diff"
