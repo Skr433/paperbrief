@@ -82,6 +82,27 @@ def main():
         assert len(r.get("answer") or "") > 20, "总结为空"
         return "%.1fs" % dt
 
+    def ask_stream():
+        rq = urllib.request.Request(
+            base + "/api/ask_stream?key=" + key["a"],
+            data=json.dumps({"q": "训练 Base 模型使用了多少块 GPU，具体是什么型号？"}).encode(),
+            method="POST", headers={"Content-Type": "application/json"})
+        deltas, done = 0, None
+        t0 = time.time()
+        with urllib.request.urlopen(rq, timeout=120) as r:
+            for raw in r:
+                line = raw.decode("utf-8", "replace").strip()
+                if not line.startswith("data: "):
+                    continue
+                ev = json.loads(line[6:])
+                if ev.get("type") == "delta":
+                    deltas += 1
+                elif ev.get("type") == "done":
+                    done = ev
+        assert deltas >= 3, "流式 token 太少"
+        assert done and "P100" in (done.get("answer") or ""), "流式答案未命中"
+        return "%d chunks %.1fs" % (deltas, time.time() - t0)
+
     def brief():
         r, dt = _req(base, "/api/brief?key=" + key["a"])
         assert r.get("contributions"), "无关键贡献"
@@ -133,6 +154,7 @@ def main():
     check("ask GPU", ask_gpu)
     check("ask BLEU", ask_bleu)
     check("ask 总结", ask_summary)
+    check("ask 流式", ask_stream)
     check("brief", brief)
     check("translate", translate)
     check("graph", graph)

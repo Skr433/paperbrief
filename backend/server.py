@@ -875,6 +875,42 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             if u.path == "/api/parse":
                 return self._send(*do_parse(q.get("name", [""])[0]))
+            if u.path == "/api/ask_stream":
+                key = q.get("key", [""])[0]
+                parsed = _load(key)
+                if not parsed:
+                    return self._send(*_json({"error": "文档不存在或未解析，请先解析"}, 404))
+                payload = json.loads(body.decode("utf-8") or "{}")
+                question = payload.get("q", "")
+                res = ask(parsed, question, extra_terms=query_extra_terms(question))
+                self.send_response(200)
+                self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("Connection", "close")
+                self.end_headers()
+                self.close_connection = True
+
+                def emit(obj):
+                    self.wfile.write(("data: " + json.dumps(obj, ensure_ascii=False) + "\n\n").encode("utf-8"))
+                    self.wfile.flush()
+
+                emit({"type": "meta", "mode": res.get("mode"), "anchors": res.get("anchors", [])})
+                full = ""
+                try:
+                    if llm.available() and res.get("anchors") and res.get("mode") == "rag":
+                        for piece in llm.stream_answer(question, res["anchors"]):
+                            full += piece
+                            emit({"type": "delta", "text": piece})
+                        pages = "、".join(str(a["page"]) for a in res["anchors"])
+                        answer = full + f"\n\n（依据原文：第 {pages} 页，可点击下方锚点核对）"
+                        emit({"type": "done", "answer": answer, "anchors": res["anchors"],
+                              "mode": "llm", "provider": _provider_label()})
+                    else:
+                        emit({"type": "done", "answer": res.get("answer", ""),
+                              "anchors": res.get("anchors", []), "mode": res.get("mode")})
+                except Exception as e:
+                    emit({"type": "error", "error": str(e)[:200]})
+                return None
             if u.path == "/api/ask":
                 key = q.get("key", [""])[0]
                 parsed = _load(key)

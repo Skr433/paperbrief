@@ -336,3 +336,70 @@ def summarize_diff(title_a: str, title_b: str, sec_added, sec_removed,
                       {"role": "user", "content": prompt}], max_tokens=400).strip()
     except Exception:
         return ""
+
+def stream_chat(messages: list[dict], temperature: float = 0.2, timeout: int = 60,
+                max_tokens: int = 400):
+    """流式生成：逐 token yield 文本；不支持时抛异常由调用方回退。"""
+    oc = _ollama_cfg()
+    if oc["base"]:
+        payload = json.dumps({
+            "model": oc["model"], "messages": messages, "stream": True,
+            "options": {"temperature": temperature, "num_predict": max_tokens},
+        }).encode("utf-8")
+        req = urllib.request.Request(oc["base"] + "/api/chat", data=payload,
+                                     headers={"Content-Type": "application/json"}, method="POST")
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            for raw in r:
+                line = raw.decode("utf-8", "replace").strip()
+                if not line:
+                    continue
+                try:
+                    obj = json.loads(line)
+                except Exception:
+                    continue
+                piece = (obj.get("message") or {}).get("content") or ""
+                if piece:
+                    yield piece
+                if obj.get("done"):
+                    break
+        return
+
+    cfg = _cfg()
+    if not cfg["key"]:
+        raise RuntimeError("DEEPSEEK_API_KEY 未配置")
+    payload = json.dumps({
+        "model": cfg["model"], "messages": messages, "temperature": temperature,
+        "max_tokens": max_tokens, "stream": True,
+    }).encode("utf-8")
+    req = urllib.request.Request(cfg["base"] + "/chat/completions", data=payload,
+                                 headers={"Content-Type": "application/json",
+                                          "Authorization": "Bearer " + cfg["key"]}, method="POST")
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        for raw in r:
+            line = raw.decode("utf-8", "replace").strip()
+            if not line.startswith("data:"):
+                continue
+            data = line[5:].strip()
+            if data == "[DONE]":
+                break
+            try:
+                obj = json.loads(data)
+            except Exception:
+                continue
+            delta = ((obj.get("choices") or [{}])[0].get("delta") or {}).get("content") or ""
+            if delta:
+                yield delta
+
+
+def stream_answer(question: str, anchors: list[dict]):
+    ctx = "\n".join(f"[p.{a.get('page')}] {(a.get('text') or '')[:600]}" for a in anchors[:3] if a.get("text"))
+    if not ctx:
+        raise RuntimeError("无可用原文片段")
+    messages = [
+        {"role": "system", "content": (
+            "你是科研论文阅读助手。只能依据给定的<原文>回答，不得编造或补充原文以外的信息；"
+            "每条结论后必须标注来源页码，格式如 [p.7]；原文没有答案时直接回答“原文未给出该信息”。"
+            "用中文回答，不超过 120 字。数字和单位必须照原文抄写，不要换算。")},
+        {"role": "user", "content": f"<原文>\n{ctx}\n</原文>\n\n问题：{question}"},
+    ]
+    yield from stream_chat(messages, temperature=0.1, timeout=60, max_tokens=400)
