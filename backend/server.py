@@ -941,6 +941,9 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             if u.path == "/api/parse":
                 return self._send(*do_parse(q.get("name", [""])[0]))
+            if u.path == "/api/agent":
+                payload = json.loads(body.decode("utf-8") or "{}")
+                return self._send(*do_agent(payload.get("q", "")))
             if u.path == "/api/ask_stream":
                 key = q.get("key", [""])[0]
                 parsed = _load(key)
