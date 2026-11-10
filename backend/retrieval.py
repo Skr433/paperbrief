@@ -294,16 +294,22 @@ def _hardware_anchors(parsed: dict, question: str, limit: int = 2) -> list[dict]
     """硬件类问题：强制找含"数量+型号"的段落，避免被 Table 2 等页挤掉。"""
     if not _HW_Q.search(question or ""):
         return []
-    out = []
     pat = re.compile(r"\d+\s*(?:块|台)?\s*(?:NVIDIA\s*)?(?:P100|V100|GPU|TPU)", re.I)
+    cand = []
     for p in parsed.get("paragraphs", []):
         txt = p.get("text") or ""
-        if pat.search(txt):
-            out.append({"page": p["page"], "bbox": p["bbox"], "text": txt[:450],
-                        "score": 1.0, "fact": True})
-            if len(out) >= limit:
-                break
-    return out
+        if not pat.search(txt):
+            continue
+        # 正文实验段优先于摘要/表格页
+        score = 1.0
+        if p.get("page", 0) > 2:
+            score += 1.0
+        if re.search(r"trained our models|one machine|Table 3", txt, re.I):
+            score += 2.0
+        cand.append((score, {"page": p["page"], "bbox": p["bbox"], "text": txt[:450],
+                             "score": score, "fact": True}))
+    cand.sort(key=lambda x: -x[0])
+    return [a for _, a in cand[:limit]]
 
 
 def ask(parsed: dict, question: str, topk: int = 3, extra_terms: str = "", doc_key: str = "") -> dict:
