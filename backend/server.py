@@ -311,7 +311,17 @@ def do_agent(question: str) -> tuple[int, str, bytes]:
                 return _json({"plan": plan, "tool": tool, "error": "没有可用论文，请先解析"}, 400)
             if tool == "ask":
                 res = ask(p, args.get("q") or question, extra_terms=query_extra_terms(question))
-                result = {"answer": res.get("answer"), "anchors": res.get("anchors", [])}
+                ans, mode = res.get("answer"), res.get("mode")
+                if llm.available() and res.get("anchors") and res.get("mode") == "rag":
+                    try:
+                        txt = llm.answer_with_evidence(args.get("q") or question, res["anchors"])
+                        pages = "、".join(str(a["page"]) for a in res["anchors"])
+                        ans = txt + f"\n\n（依据原文：第 {pages} 页）"
+                        mode = "llm"
+                    except Exception:
+                        pass
+                result = {"answer": ans, "anchors": res.get("anchors", []), "mode": mode,
+                          "key": key, "title": p["meta"].get("title")}
             elif tool == "brief":
                 p = _load(key)
                 result = {"brief": build_brief(p)}
