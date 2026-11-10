@@ -266,6 +266,68 @@ def _norm_paras(parsed: dict, limit: int = 1200) -> list[str]:
     return out
 
 
+def do_agent(question: str) -> tuple[int, str, bytes]:
+    """最小 Agent 闭环：LLM 选工具 → 执行 → 返回计划与结果。"""
+    tools = ["parse", "ask", "brief", "graph", "diff", "compare"]
+    prompt = ("你是科研助手 Agent。根据用户问题从工具中选一个并给参数，只输出 JSON："
+              '{"tool":"parse|ask|brief|graph|diff|compare","args":{...},"why":"一句话"}。'
+              "工具参数：parse{name}; ask{key,q}; brief{key}; graph{key}; diff{k1,k2}; compare{k1,k2,q}。"
+              "没有 key 时优先 parse（name 可为论文文件名）。")
+    plan = {}
+    try:
+        raw = llm.chat([{"role": "system", "content": prompt},
+                        {"role": "user", "content": question}], temperature=0, max_tokens=200)
+        import re as _re
+        m = _re.search(r"\{.*\}", raw, _re.S)
+        plan = json.loads(m.group(0)) if m else {}
+    except Exception:
+        plan = {}
+    tool = plan.get("tool") if plan.get("tool") in tools else "parse"
+    args = plan.get("args") or {}
+    result, detail = None, ""
+    try:
+        if tool == "parse":
+            name = args.get("name") or question
+            result, detail = _agent_parse(name)
+        elif tool in ("ask", "brief", "graph"):
+            key = args.get("key") or _agent_last_key()
+            if tool == "ask":
+                p = _load(key)
+                res = ask(p, args.get("q") or question, extra_terms=query_extra_terms(question))
+                result = {"answer": res.get("answer"), "anchors": res.get("anchors", [])}
+            elif tool == "brief":
+                p = _load(key)
+                result = {"brief": build_brief(p)}
+            else:
+                result = {"todo": "graph"}
+            detail = key
+        elif tool == "diff":
+            result = {"diff": "请传 k1/k2"}
+        elif tool == "compare":
+            result = {"compare": "请传 k1/k2"}
+    except Exception as e:
+        result, detail = {"error": str(e)[:200]}, ""
+    return _json({"plan": plan, "tool": tool, "args": args, "detail": detail, "result": result})
+
+
+def _agent_last_key() -> str:
+    rows = _parsed_index()
+    return rows[0]["key"] if rows else ""
+
+
+def _agent_parse(name: str):
+    path = _find_pdf(name)
+    if not path:
+        return {"error": "未找到论文：" + name}, ""
+    key = _key_of(path)
+    cached = _load(key)
+    if not cached:
+        cached = parse_pdf(path)
+        cached["fingerprint"] = fingerprint(cached)
+        _save(key, cached)
+    return {"key": key, "title": cached["meta"].get("title"), "pages": cached["meta"].get("pages")}, key
+
+
 def do_diff(k1: str, k2: str) -> tuple[int, str, bytes]:
     import difflib
 
@@ -694,6 +756,10 @@ class Handler(SimpleHTTPRequestHandler):
                                           "parser_version": PARSER_VERSION}))
             if u.path == "/api/library":
                 return self._send(*_json({"docs": library()}))
+            if u.path == "/api/agent":
+                payload = json.loads(body.decode("utf-8") or "{}")
+                question = payload.get("q", "")
+                return self._send(*do_agent(question))
             if u.path == "/api/diff":
                 return self._send(*do_diff(q.get("k1", [""])[0], q.get("k2", [""])[0]))
             if u.path == "/api/doc":
