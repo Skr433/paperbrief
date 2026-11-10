@@ -269,8 +269,15 @@ def _precision_anchors(anchors: list[dict], question: str, answer_text: str,
     pages = sorted(by_page.items(), key=lambda kv: -kv[1][0])
 
     keep = []
+    # 数字型事实锚点强制保留（GPU/超参数等题不能被 BM25 噪声页挤掉）
+    facts = [(s, a) for s, a in scored if a.get("fact")]
+    if facts:
+        fs, fa = max(facts, key=lambda x: x[0])
+        keep.append((fs, fa))
     for pg, (s, a) in pages:
-        if best_score > 0 and s < best_score * 0.72:
+        if keep and a["page"] == keep[0][1]["page"]:
+            continue
+        if not facts and best_score > 0 and s < best_score * 0.72:
             continue
         keep.append((s, a))
         if len(keep) >= max_pages:
