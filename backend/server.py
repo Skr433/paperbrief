@@ -290,8 +290,14 @@ def do_future(key: str) -> tuple[int, str, bytes]:
             mode = "llm"
         except Exception:
             pass
-    if not directions:
-        directions = [(x.get("text") or "")[:80] + " [p.%s]" % x["page"] for x in picks[:3]]
+    if len(directions) < 3:
+        # 不足 3 条时用原文摘录补齐（保持可核对）
+        for x in picks:
+            if len(directions) >= 3:
+                break
+            snippet = (x.get("text") or "")[:80] + " [p.%s]" % x["page"]
+            if snippet not in directions:
+                directions.append(snippet)
     return _json({"key": key, "title": p["meta"].get("title"),
                   "directions": directions, "mode": mode,
                   "anchors": [{"page": x["page"], "bbox": x["bbox"]} for x in picks]})
