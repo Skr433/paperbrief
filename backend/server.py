@@ -851,6 +851,8 @@ class Handler(SimpleHTTPRequestHandler):
                 payload = json.loads(body.decode("utf-8") or "{}")
                 question = payload.get("q", "")
                 return self._send(*do_agent(question))
+            if u.path == "/api/future":
+                return self._send(*do_future(q.get("key", [""])[0]))
             if u.path == "/api/diff":
                 return self._send(*do_diff(q.get("k1", [""])[0], q.get("k2", [""])[0]))
             if u.path == "/api/doc":
