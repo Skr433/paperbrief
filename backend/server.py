@@ -266,9 +266,40 @@ def _norm_paras(parsed: dict, limit: int = 1200) -> list[str]:
     return out
 
 
+_FW_RE = __import__("re").compile(r"future work|future research|future direction|后续工作|未来研究|展望", __import__("re").I)
+
+
+def do_future(key: str) -> tuple[int, str, bytes]:
+    p = _load(key)
+    if not p:
+        return _json({"error": "文档不存在或未解析，请先解析"}, 404)
+    paras = [x for x in p.get("paragraphs", []) if (x.get("text") or "").strip()]
+    picks = [x for x in paras if _FW_RE.search(x.get("text") or "")][:3]
+    if not picks:
+        picks = [x for x in paras if x.get("kind") == "body"][-3:]
+    ctx = "\n".join("[p.%s] %s" % (x["page"], (x.get("text") or "")[:500]) for x in picks)
+    directions, mode = [], "extractive"
+    if llm.available() and ctx:
+        try:
+            raw = llm.chat([
+                {"role": "system", "content": "只依据原文，提炼 3 条未来研究方向，每条不超过 30 字，格式 '方向 [p.X]'，不要编造。"},
+                {"role": "user", "content": ctx + "\n\n请提炼未来研究方向。"},
+            ], temperature=0.1, max_tokens=300)
+            lines = [ln.strip(" -•") for ln in raw.splitlines() if ln.strip()]
+            directions = [ln for ln in lines if ln][:3]
+            mode = "llm"
+        except Exception:
+            pass
+    if not directions:
+        directions = [(x.get("text") or "")[:80] + " [p.%s]" % x["page"] for x in picks[:3]]
+    return _json({"key": key, "title": p["meta"].get("title"),
+                  "directions": directions, "mode": mode,
+                  "anchors": [{"page": x["page"], "bbox": x["bbox"]} for x in picks]})
+
+
 def do_agent(question: str, cur_key: str = "") -> tuple[int, str, bytes]:
     """最小 Agent 闭环：LLM 选工具 → 执行 → 返回计划与结果。"""
-    tools = ["parse", "ask", "brief", "graph", "diff", "compare"]
+    tools = ["parse", "ask", "brief", "graph", "diff", "compare", "future"]
     prompt = ("你是科研助手 Agent。根据用户问题从工具中选一个并给参数，只输出 JSON："
               '{"tool":"parse|ask|brief|graph|diff|compare","args":{...},"why":"一句话"}。'
               "工具参数：parse{name}; ask{key,q}; brief{key}; graph{key}; diff{k1,k2}; compare{k1,k2,q}。"
@@ -290,6 +321,8 @@ def do_agent(question: str, cur_key: str = "") -> tuple[int, str, bytes]:
         tool = "brief"
     elif any(k in question for k in ("图谱", "引文网络", "引用关系", "核心节点")):
         tool = "graph"
+    elif any(k in question for k in ("未来方向", "future work", "后续研究", "研究展望")):
+        tool = "future"
     elif any(k in question for k in ("差异", "版本对比", "改了什么", "修订")):
         tool = "diff"
     elif tool == "parse" and not _re.search(r"\.pdf", question) and not any(
@@ -300,6 +333,14 @@ def do_agent(question: str, cur_key: str = "") -> tuple[int, str, bytes]:
         if tool == "parse":
             name = args.get("name") or question
             result, detail = _agent_parse(name)
+        elif tool == "future":
+            key = cur_key or _agent_last_key()
+            if not key:
+                _path = _find_pdf("1706.03762v7.pdf")
+                if _path:
+                    key = _key_of(_path)
+            _st, _ct, _body = do_future(key)
+            result = json.loads(_body.decode("utf-8"))
         elif tool in ("ask", "brief", "graph"):
             key = args.get("key") or cur_key or _agent_last_key()
             p = _load(key) if key else None
