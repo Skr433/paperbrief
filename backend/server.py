@@ -285,8 +285,14 @@ def do_agent(question: str) -> tuple[int, str, bytes]:
     import re as _re
     tool = plan.get("tool") if plan.get("tool") in tools else "parse"
     args = plan.get("args") or {}
-    # 纠偏：没给文件名的提问默认走 ask（否则每次都会去 parse 不存在的文件）
-    if tool == "parse" and not _re.search(r"\.pdf", question) and not any(
+    # 纠偏：关键词优先（模型规划常把 brief/graph/diff 误判成 ask）
+    if any(k in question for k in ("汇报包", "汇报材料", "生成汇报")):
+        tool = "brief"
+    elif any(k in question for k in ("图谱", "引文网络", "引用关系", "核心节点")):
+        tool = "graph"
+    elif any(k in question for k in ("差异", "版本对比", "改了什么", "修订")):
+        tool = "diff"
+    elif tool == "parse" and not _re.search(r"\.pdf", question) and not any(
             k in question for k in ("解析", "上传", "打开", "入库")):
         tool, args = "ask", {"q": question}
     result, detail = None, ""
@@ -323,13 +329,26 @@ def do_agent(question: str) -> tuple[int, str, bytes]:
                 result = {"answer": ans, "anchors": res.get("anchors", []), "mode": mode,
                           "key": key, "title": p["meta"].get("title")}
             elif tool == "brief":
-                p = _load(key)
-                result = {"brief": build_brief(p)}
+                br = build_brief(p)
+                result = {"title": p["meta"].get("title"),
+                          "contributions": br.get("contributions", [])[:3],
+                          "summary": br.get("abstract") or br.get("ai_summary") or ""}
             else:
-                result = {"todo": "graph"}
+                result = {"graph": build_graph(p["meta"].get("title", ""),
+                                               p.get("references") or [])}
             detail = key
         elif tool == "diff":
-            result = {"diff": "请传 k1/k2"}
+            k1, k2 = args.get("k1"), args.get("k2")
+            if not (k1 and k2):
+                names = _re.findall(r"\d{4}\.\d{4,5}v\d", question)
+                if len(names) >= 2:
+                    k1 = _agent_parse(names[0])[1]
+                    k2 = _agent_parse(names[1])[1]
+                else:
+                    k1 = _agent_parse("1706.03762v1.pdf")[1]
+                    k2 = _agent_parse("1706.03762v7.pdf")[1]
+            _st, _ct, _body = do_diff(k1, k2)
+            result = json.loads(_body.decode("utf-8"))
         elif tool == "compare":
             result = {"compare": "请传 k1/k2"}
     except Exception as e:
