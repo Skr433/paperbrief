@@ -266,7 +266,7 @@ def _norm_paras(parsed: dict, limit: int = 1200) -> list[str]:
     return out
 
 
-def do_agent(question: str) -> tuple[int, str, bytes]:
+def do_agent(question: str, cur_key: str = "") -> tuple[int, str, bytes]:
     """最小 Agent 闭环：LLM 选工具 → 执行 → 返回计划与结果。"""
     tools = ["parse", "ask", "brief", "graph", "diff", "compare"]
     prompt = ("你是科研助手 Agent。根据用户问题从工具中选一个并给参数，只输出 JSON："
@@ -301,7 +301,7 @@ def do_agent(question: str) -> tuple[int, str, bytes]:
             name = args.get("name") or question
             result, detail = _agent_parse(name)
         elif tool in ("ask", "brief", "graph"):
-            key = args.get("key") or _agent_last_key()
+            key = args.get("key") or cur_key or _agent_last_key()
             p = _load(key) if key else None
             if not p:
                 # 兜底：默认解析 Attention v7（演示常用）
@@ -993,7 +993,7 @@ class Handler(SimpleHTTPRequestHandler):
                 return self._send(*do_parse(q.get("name", [""])[0]))
             if u.path == "/api/agent":
                 payload = json.loads(body.decode("utf-8") or "{}")
-                return self._send(*do_agent(payload.get("q", "")))
+                return self._send(*do_agent(payload.get("q", ""), payload.get("key", "")))
             if u.path == "/api/ask_stream":
                 key = q.get("key", [""])[0]
                 parsed = _load(key)
