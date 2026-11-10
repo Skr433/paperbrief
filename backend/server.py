@@ -282,8 +282,13 @@ def do_agent(question: str) -> tuple[int, str, bytes]:
         plan = json.loads(m.group(0)) if m else {}
     except Exception:
         plan = {}
+    import re as _re
     tool = plan.get("tool") if plan.get("tool") in tools else "parse"
     args = plan.get("args") or {}
+    # 纠偏：没给文件名的提问默认走 ask（否则每次都会去 parse 不存在的文件）
+    if tool == "parse" and not _re.search(r"\.pdf", question) and not any(
+            k in question for k in ("解析", "上传", "打开", "入库")):
+        tool, args = "ask", {"q": question}
     result, detail = None, ""
     try:
         if tool == "parse":
