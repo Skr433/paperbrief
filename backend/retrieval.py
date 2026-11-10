@@ -209,7 +209,7 @@ def _fact_extra_anchors(parsed: dict, question: str, limit: int = 3) -> list[dic
         if key in seen:
             continue
         seen.add(key)
-        out.append({"page": p["page"], "bbox": p["bbox"], "text": text[:450], "score": 0.6})
+        out.append({"page": p["page"], "bbox": p["bbox"], "text": text[:450], "score": 0.6, "fact": True})
         if len(out) >= limit:
             break
     return out
@@ -251,6 +251,8 @@ def _precision_anchors(anchors: list[dict], question: str, answer_text: str,
     for a, ts in zip(base, texts):
         hit = (q & ts)
         s = sum(weight(w) for w in hit)
+        if a.get("fact"):
+            s += 3.0
         # 数值问题：锚点里有数字再加一点（但不能盖过问题词命中）
         if q_num and (q_num & set(_NUM_RE.findall(a.get("text") or ""))):
             s += 1.0
