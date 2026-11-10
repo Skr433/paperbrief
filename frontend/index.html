@@ -391,13 +391,14 @@
 </style>
 
 <style>
-#agentPet{position:fixed;right:24px;bottom:24px;width:54px;height:54px;border-radius:50%;
-  background:#fff;border:1px solid #d1d5db;color:#1f2937;display:flex;align-items:center;justify-content:center;
+#agentPet{position:fixed;right:24px;bottom:24px;width:62px;height:62px;border-radius:50%;
+  background:#2563eb;border:1px solid #1d4ed8;color:#fff;display:flex;align-items:center;justify-content:center;
   cursor:grab;z-index:60;box-shadow:0 6px 18px rgba(15,23,42,.12);font-size:12px;font-weight:600;
   user-select:none;touch-action:none;transition:transform .12s}
 #agentPet:active{transform:scale(.95)}
 #agentPet.dragging{cursor:grabbing}
-#agentPet svg{width:22px;height:22px}
+#agentPet svg{width:26px;height:26px}
+#agentPet:hover{background:#1d4ed8}
 #agentTip{position:fixed;right:88px;bottom:32px;background:#1f2937;color:#fff;font-size:13px;
   padding:8px 12px;border-radius:8px;z-index:61;display:none}
 #agentMask{position:fixed;inset:0;background:rgba(15,23,42,.25);z-index:70;display:none}
@@ -419,7 +420,7 @@
   <header class="l-head">
     <a class="btn btn-home" href="#/" title="返回首页">⌂ 首页</a>
     <div class="logo">Paper<span>Brief</span></div>
-    <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.35</span></div>
+    <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.36</span></div>
     <div class="grow"></div>
     <a class="btn" href="#/about">关于</a>
     <a class="btn btn-primary" href="#/app/brief">进入工作台</a>
@@ -465,7 +466,7 @@
   </div>
 
   <footer class="l-foot">
-    <span>PaperBrief v0.14.35 · 每条结论都能点回原文</span>
+    <span>PaperBrief v0.14.36 · 每条结论都能点回原文</span>
     <span><a href="#/about">技术说明与已知限制</a> · 第九届传智杯 · 科研小助手 Agent</span>
   </footer>
 </div>
@@ -474,7 +475,7 @@
   <header class="l-head">
     <a class="btn btn-home" href="#/" title="返回首页">⌂ 首页</a>
     <div class="logo">Paper<span>Brief</span></div>
-    <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.35</span></div>
+    <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.36</span></div>
     <div class="grow"></div>
     <a class="btn btn-primary" href="#/app/brief">进入工作台</a>
   </header>
@@ -487,7 +488,7 @@
     <p>扫描版 PDF 无 OCR；部分论文参考文献排版特殊时解析条数会偏少（已给出提示）；arXiv 从国内访问偶发超时，已做重试、缓存与友好提示；本地 3B 模型质量弱于云端，定位为离线演示。</p>
     <p><a href="https://github.com/Skr433/paperbrief">代码仓库</a> · <a href="#/app/brief">进入工作台</a></p>
   </section>
-  <footer class="l-foot"><span>PaperBrief v0.14.35</span><span>第九届传智杯 · 赛道 10040</span></footer>
+  <footer class="l-foot"><span>PaperBrief v0.14.36</span><span>第九届传智杯 · 赛道 10040</span></footer>
 </div>
 
 <div id="app-shell" style="display:none">
@@ -508,7 +509,7 @@
 <header>
   <a class="btn btn-home" href="#/" title="返回首页">⌂ 首页</a>
   <div class="logo">Paper<span>Brief</span></div>
-  <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.35</span></div>
+  <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.36</span></div>
   <div class="grow"></div>
   <select id="lib"><option>正在加载论文库…</option></select>
   <button id="btnParse" class="primary">解析并生成</button>
