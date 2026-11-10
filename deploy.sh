@@ -15,7 +15,7 @@ step() { STEP="$1"; echo; echo "==> $1"; }
 step "[1/8] 安装系统依赖"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y >/tmp/apt-update.log 2>&1 || echo "[warn] apt-get update 失败，继续（安装阶段可能仍可用）"
-apt-get install -y python3 python3-venv python3-pip nginx unzip curl >/tmp/apt-install.log 2>&1 || {
+apt-get install -y python3 python3-venv python3-pip nginx unzip curl tesseract-ocr tesseract-ocr-eng >/tmp/apt-install.log 2>&1 || {
   echo "[error] apt 安装失败，最后 15 行："; tail -n 15 /tmp/apt-install.log; exit 1;
 }
 

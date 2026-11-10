@@ -19,7 +19,7 @@ import unicodedata
 from collections import Counter
 
 # 解析版本号：改动解析逻辑时递增，服务端会据此自动失效旧缓存（避免"改了代码还看到旧结果"）
-PARSER_VERSION = "0.2.13"
+PARSER_VERSION = "0.2.14"
 
 AFFIL_NAMES = [
     "Google Brain", "Google Research", "Google", "University of Toronto", "University of Washington",
@@ -209,7 +209,20 @@ def parse_pdf(path: str) -> dict:
     import pymupdf
 
     doc = pymupdf.open(path)
-    page_blocks = [_page_blocks(p.get_text("dict"), p.rect.height) for p in doc]
+    page_blocks = []
+    ocr_pages = []
+    for _idx, _p in enumerate(doc, start=1):
+        _txt = _p.get_text("text") or ""
+        if len(_txt.strip()) < 10:
+            # 扫描件：无文本层 → Tesseract OCR 兜底（失败则保持原样）
+            try:
+                _tp = _p.get_textpage_ocr(language="eng", dpi=200)
+                page_blocks.append(_page_blocks(_p.get_text("dict", textpage=_tp), _p.rect.height))
+                ocr_pages.append(_idx)
+                continue
+            except Exception:
+                pass
+        page_blocks.append(_page_blocks(_p.get_text("dict"), _p.rect.height))
     body = _body_size(page_blocks)
 
     title = ""
@@ -397,6 +410,7 @@ def parse_pdf(path: str) -> dict:
     meta = {
         "file": os.path.basename(path),
         "pages": len(page_blocks),
+        "ocr_pages": ocr_pages,
         "sha1": hashlib.sha1(open(path, "rb").read()).hexdigest()[:16],
         "size_kb": round(os.path.getsize(path) / 1024, 1),
         "title": title or os.path.splitext(os.path.basename(path))[0],
