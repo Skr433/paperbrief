@@ -287,6 +287,25 @@ def _precision_anchors(anchors: list[dict], question: str, answer_text: str,
     return [a for _, a in keep]
 
 
+_HW_Q = re.compile(r"GPU|显卡|显存|TPU|P100|V100", re.I)
+
+
+def _hardware_anchors(parsed: dict, question: str, limit: int = 2) -> list[dict]:
+    """硬件类问题：强制找含"数量+型号"的段落，避免被 Table 2 等页挤掉。"""
+    if not _HW_Q.search(question or ""):
+        return []
+    out = []
+    pat = re.compile(r"\d+\s*(?:块|台)?\s*(?:NVIDIA\s*)?(?:P100|V100|GPU|TPU)", re.I)
+    for p in parsed.get("paragraphs", []):
+        txt = p.get("text") or ""
+        if pat.search(txt):
+            out.append({"page": p["page"], "bbox": p["bbox"], "text": txt[:450],
+                        "score": 1.0, "fact": True})
+            if len(out) >= limit:
+                break
+    return out
+
+
 def ask(parsed: dict, question: str, topk: int = 3, extra_terms: str = "", doc_key: str = "") -> dict:
     """返回 {answer, anchors:[{page,bbox,text,score}], mode}。"""
     paras = [p for p in parsed["paragraphs"] if len(p["text"]) > 40]
@@ -390,7 +409,7 @@ def ask(parsed: dict, question: str, topk: int = 3, extra_terms: str = "", doc_k
         answer_bits.append(" ".join((best or sents)[:2])[:300])
 
     # 参数/上下文类问题：补数字型证据（BM25 常把附录排前面）
-    for _a in _fact_extra_anchors(parsed, question):
+    for _a in _fact_extra_anchors(parsed, question) + _hardware_anchors(parsed, question):
         if not any(_a["page"] == b["page"] and _a["bbox"] == b["bbox"] for b in anchors):
             anchors.append(_a)
             answer_bits.append((_a["text"] or "")[:240])
