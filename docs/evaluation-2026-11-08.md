@@ -164,6 +164,13 @@ live health：`parser_version 0.2.4`、`provider deepseek:deepseek-chat`、`hybr
 
 `release_check.py` 线上 11/11 PASS。
 
+
+### 3.8 锚点约束对照实验（2026-11-10）
+
+20 题（Attention 9 / BERT 6 / GPT-3 5），DeepSeek，temperature=0，三组：
+A 纯 LLM（无原文）无依据数字 **13/20 = 65%**；B RAG 无锚点要求 **2/20 = 10%**；C 本系统 **0/20 = 0%**。
+B 组失败为 GPT-3 175B→1750、300B→3000（单位/数量级错误），C 组全部正确。
+
 ## 四、模块可靠性（30/30 成功）
 
 测试时间 2026-11-08 15:58–16:00（当时线上 v0.14.4），10 个模块 × 3 轮 + 并发 3×3：

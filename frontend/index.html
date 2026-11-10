@@ -395,7 +395,7 @@
   <header class="l-head">
     <a class="btn btn-home" href="#/" title="返回首页">⌂ 首页</a>
     <div class="logo">Paper<span>Brief</span></div>
-    <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.17</span></div>
+    <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.18</span></div>
     <div class="grow"></div>
     <a class="btn" href="#/about">关于</a>
     <a class="btn btn-primary" href="#/app/brief">进入工作台</a>
@@ -441,7 +441,7 @@
   </div>
 
   <footer class="l-foot">
-    <span>PaperBrief v0.14.17 · 每条结论都能点回原文</span>
+    <span>PaperBrief v0.14.18 · 每条结论都能点回原文</span>
     <span><a href="#/about">技术说明与已知限制</a> · 第九届传智杯 · 科研小助手 Agent</span>
   </footer>
 </div>
@@ -450,7 +450,7 @@
   <header class="l-head">
     <a class="btn btn-home" href="#/" title="返回首页">⌂ 首页</a>
     <div class="logo">Paper<span>Brief</span></div>
-    <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.17</span></div>
+    <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.18</span></div>
     <div class="grow"></div>
     <a class="btn btn-primary" href="#/app/brief">进入工作台</a>
   </header>
@@ -463,7 +463,7 @@
     <p>扫描版 PDF 无 OCR；部分论文参考文献排版特殊时解析条数会偏少（已给出提示）；arXiv 从国内访问偶发超时，已做重试、缓存与友好提示；本地 3B 模型质量弱于云端，定位为离线演示。</p>
     <p><a href="https://github.com/Skr433/paperbrief">代码仓库</a> · <a href="#/app/brief">进入工作台</a></p>
   </section>
-  <footer class="l-foot"><span>PaperBrief v0.14.17</span><span>第九届传智杯 · 赛道 10040</span></footer>
+  <footer class="l-foot"><span>PaperBrief v0.14.18</span><span>第九届传智杯 · 赛道 10040</span></footer>
 </div>
 
 <div id="app-shell" style="display:none">
@@ -484,7 +484,7 @@
 <header>
   <a class="btn btn-home" href="#/" title="返回首页">⌂ 首页</a>
   <div class="logo">Paper<span>Brief</span></div>
-  <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.17</span></div>
+  <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.18</span></div>
   <div class="grow"></div>
   <select id="lib"><option>正在加载论文库…</option></select>
   <button id="btnParse" class="primary">解析并生成</button>
@@ -1795,9 +1795,15 @@ async function doAskStream(q){
   pill.style.cssText = "background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8;margin-left:6px";
   h.appendChild(pill);
   card.appendChild(h);
+  const steps = el("div", "", "");
+  steps.style.cssText = "font-size:13px;color:#4b5563;margin:0 0 10px;line-height:1.9";
+  card.appendChild(steps);
   const ans = el("div", "ans", "");
   card.appendChild(ans);
   box.appendChild(card);
+  const t0 = Date.now();
+  let tokens = 0;
+  const setStep = (txt) => { steps.innerHTML = txt; };
 
   let buf = "", full = "", anchors = [], done = false, errored = false;
   const reader = resp.body.getReader();
@@ -1812,9 +1818,24 @@ async function doAskStream(q){
       const line = frame.split("\n").find(l => l.startsWith("data: "));
       if(!line) continue;
       let ev; try{ ev = JSON.parse(line.slice(6)); }catch(e){ continue; }
-      if(ev.type === "meta"){ anchors = ev.anchors || []; }
-      else if(ev.type === "delta"){ full += ev.text; ans.textContent = full; }
-      else if(ev.type === "done"){ done = true; if(ev.answer) full = ev.answer; anchors = ev.anchors || anchors; }
+      if(ev.type === "meta"){
+        anchors = ev.anchors || [];
+        const pg = [...new Set(anchors.map(a => a.page))].join("、");
+        setStep(`① 检索完成 · 命中 ${anchors.length} 段证据<br/>② 证据选定 · 第 ${pg || "-"} 页<br/>③ 生成中 · 0 字`);
+      }
+      else if(ev.type === "delta"){
+        full += ev.text; tokens += 1;
+        ans.textContent = full;
+        if(tokens % 5 === 1){
+          const pg = [...new Set(anchors.map(a => a.page))].join("、");
+          setStep(`① 检索完成 · 命中 ${anchors.length} 段证据<br/>② 证据选定 · 第 ${pg || "-"} 页<br/>③ 生成中 · ${full.length} 字 · ${((Date.now()-t0)/1000).toFixed(1)}s`);
+        }
+      }
+      else if(ev.type === "done"){
+        done = true; if(ev.answer) full = ev.answer; anchors = ev.anchors || anchors;
+        const pg = [...new Set(anchors.map(a => a.page))].join("、");
+        setStep(`① 检索完成 · 命中 ${anchors.length} 段证据<br/>② 证据选定 · 第 ${pg || "-"} 页<br/>③ 生成完成 · ${full.length} 字 · ${((Date.now()-t0)/1000).toFixed(1)}s`);
+      }
       else if(ev.type === "error"){ errored = true; }
     }
   }
