@@ -342,11 +342,9 @@ def do_agent(question: str) -> tuple[int, str, bytes]:
             if not (k1 and k2):
                 names = _re.findall(r"\d{4}\.\d{4,5}v\d", question)
                 if len(names) >= 2:
-                    k1 = _agent_parse(names[0])[1]
-                    k2 = _agent_parse(names[1])[1]
+                    k1, k2 = names[0] + ".pdf", names[1] + ".pdf"
                 else:
-                    k1 = _agent_parse("1706.03762v1.pdf")[1]
-                    k2 = _agent_parse("1706.03762v7.pdf")[1]
+                    k1, k2 = "1706.03762v1.pdf", "1706.03762v7.pdf"
             _st, _ct, _body = do_diff(k1, k2)
             result = json.loads(_body.decode("utf-8"))
         elif tool == "compare":
