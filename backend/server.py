@@ -296,8 +296,20 @@ def do_agent(question: str) -> tuple[int, str, bytes]:
             result, detail = _agent_parse(name)
         elif tool in ("ask", "brief", "graph"):
             key = args.get("key") or _agent_last_key()
+            p = _load(key) if key else None
+            if not p:
+                # 兜底：默认解析 Attention v7（演示常用）
+                _path = _find_pdf("1706.03762v7.pdf")
+                if _path:
+                    key = _key_of(_path)
+                    p = _load(key)
+                    if not p:
+                        p = parse_pdf(_path)
+                        p["fingerprint"] = fingerprint(p)
+                        _save(key, p)
+            if not p:
+                return _json({"plan": plan, "tool": tool, "error": "没有可用论文，请先解析"}, 400)
             if tool == "ask":
-                p = _load(key)
                 res = ask(p, args.get("q") or question, extra_terms=query_extra_terms(question))
                 result = {"answer": res.get("answer"), "anchors": res.get("anchors", [])}
             elif tool == "brief":
