@@ -414,13 +414,30 @@
 #agentOut .plan{background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:13px;color:#4b5563}
 @media(max-width:720px){#agentPet,#agentTip{display:none}}
 </style>
+
+<style>
+#biBtn{height:36px}
+#biOverlay{position:fixed;inset:0;background:#fff;z-index:80;display:none;flex-direction:column}
+#biOverlay.open{display:flex}
+#biHead{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid #e5e7eb}
+#biHead b{font-size:15px}
+#biHead .sp{flex:1}
+#biBody{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:0;min-height:0}
+#biLeft,#biRight{overflow:auto;padding:12px;box-sizing:border-box}
+#biLeft{border-right:1px solid #e5e7eb;text-align:center;background:#f8fafc}
+#biLeft img{max-width:100%;border:1px solid #e5e7eb;border-radius:6px;background:#fff}
+#biRight{font-size:14px;line-height:1.8;color:#1f2937}
+#biRight .bi-p{background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;margin-bottom:10px}
+#biRight .bi-en{color:#6b7280;font-size:13px;margin-bottom:4px}
+@media(max-width:720px){#biBody{grid-template-columns:1fr;grid-template-rows:auto 1fr}#biLeft{border-right:none;border-bottom:1px solid #e5e7eb}}
+</style>
 </head>
 <body>
 <div id="landing-view">
   <header class="l-head">
     <a class="btn btn-home" href="#/" title="返回首页">⌂ 首页</a>
     <div class="logo">Paper<span>Brief</span></div>
-    <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.46</span></div>
+    <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.47</span></div>
     <div class="grow"></div>
     <a class="btn" href="#/about">关于</a>
     <a class="btn btn-primary" href="#/app/brief">进入工作台</a>
@@ -466,7 +483,7 @@
   </div>
 
   <footer class="l-foot">
-    <span>PaperBrief v0.14.46 · 每条结论都能点回原文</span>
+    <span>PaperBrief v0.14.47 · 每条结论都能点回原文</span>
     <span><a href="#/about">技术说明与已知限制</a> · 第九届传智杯 · 科研小助手 Agent</span>
   </footer>
 </div>
@@ -475,7 +492,7 @@
   <header class="l-head">
     <a class="btn btn-home" href="#/" title="返回首页">⌂ 首页</a>
     <div class="logo">Paper<span>Brief</span></div>
-    <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.46</span></div>
+    <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.47</span></div>
     <div class="grow"></div>
     <a class="btn btn-primary" href="#/app/brief">进入工作台</a>
   </header>
@@ -488,7 +505,7 @@
     <p>扫描版 PDF 无 OCR；部分论文参考文献排版特殊时解析条数会偏少（已给出提示）；arXiv 从国内访问偶发超时，已做重试、缓存与友好提示；本地 3B 模型质量弱于云端，定位为离线演示。</p>
     <p><a href="https://github.com/Skr433/paperbrief">代码仓库</a> · <a href="#/app/brief">进入工作台</a></p>
   </section>
-  <footer class="l-foot"><span>PaperBrief v0.14.46</span><span>第九届传智杯 · 赛道 10040</span></footer>
+  <footer class="l-foot"><span>PaperBrief v0.14.47</span><span>第九届传智杯 · 赛道 10040</span></footer>
 </div>
 
 <div id="app-shell" style="display:none">
@@ -509,12 +526,13 @@
 <header>
   <a class="btn btn-home" href="#/" title="返回首页">⌂ 首页</a>
   <div class="logo">Paper<span>Brief</span></div>
-  <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.46</span></div>
+  <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.47</span></div>
   <div class="grow"></div>
   <select id="lib"><option>正在加载论文库…</option></select>
   <button id="btnParse" class="primary">解析并生成</button>
   <button id="btnParseOnly">仅解析</button>
   <button id="btnDemo">一键演示</button>
+  <button id="btnBilingual">双语对照</button>
   <button id="btnMd">导出 Markdown</button>
   <input type="file" id="file" accept="application/pdf" style="display:none" />
   <button id="btnUpload">上传 PDF</button>
@@ -2223,6 +2241,71 @@ loadLibrary().then(()=>{
   }
   document.getElementById("agentRun").onclick = run;
   document.getElementById("agentQ").addEventListener("keydown", (e)=>{ if(e.key === "Enter") run(); });
+})();
+</script>
+
+<div id="biOverlay">
+  <div id="biHead">
+    <b>中英双语对照</b>
+    <span class="muted" id="biTitle" style="font-size:13px"></span>
+    <span class="sp"></span>
+    <button id="biPrev">← 上一页</button>
+    <span id="biPage" class="muted">- / -</span>
+    <button id="biNext">下一页 →</button>
+    <button id="biClose">关闭</button>
+  </div>
+  <div id="biBody">
+    <div id="biLeft"><div class="muted">原文页面</div></div>
+    <div id="biRight"><div class="muted">译文</div></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const ov = document.getElementById("biOverlay");
+  const btn = document.getElementById("btnBilingual");
+  if(!ov || !btn) return;
+  let pg = 1, total = 1, busy = false;
+
+  function open(){
+    if(typeof S === "undefined" || !S.key){ if(typeof hint === "function") hint("请先解析一篇论文"); return; }
+    total = S.pages || 1; pg = 1;
+    document.getElementById("biTitle").textContent = (S.doc && S.doc.title) || "";
+    ov.classList.add("open");
+    load();
+  }
+  function close(){ ov.classList.remove("open"); }
+  btn.onclick = open;
+  document.getElementById("biClose").onclick = close;
+  document.getElementById("biPrev").onclick = ()=>{ if(pg > 1){ pg--; load(); } };
+  document.getElementById("biNext").onclick = ()=>{ if(pg < total){ pg++; load(); } };
+
+  async function load(){
+    if(busy) return; busy = true;
+    document.getElementById("biPage").textContent = pg + " / " + total;
+    const left = document.getElementById("biLeft");
+    left.innerHTML = '<div class="muted">加载页面…</div>';
+    const img = new Image();
+    img.onload = ()=>{ left.innerHTML = ""; left.appendChild(img); };
+    img.onerror = ()=>{ left.innerHTML = '<div class="muted">页面加载失败</div>'; };
+    img.src = "/api/page?key=" + encodeURIComponent(S.key) + "&n=" + pg;
+    const box = document.getElementById("biRight");
+    box.innerHTML = '<div class="muted">翻译中…</div>';
+    try{
+      const r = await fetch("/api/translate?key=" + encodeURIComponent(S.key) + "&page=" + pg, {method:"POST", headers:{"Content-Type":"application/json"}, body:"{}"});
+      const d = await r.json();
+      const items = d.items || [];
+      box.innerHTML = "";
+      if(!items.length) box.innerHTML = '<div class="muted">本页暂无译文</div>';
+      items.forEach(it=>{
+        const div = document.createElement("div"); div.className = "bi-p";
+        const en = document.createElement("div"); en.className = "bi-en"; en.textContent = it.src || it.text || "";
+        const zh = document.createElement("div"); zh.textContent = it.zh || it.dst || it.text || "";
+        div.appendChild(en); div.appendChild(zh); box.appendChild(div);
+      });
+    }catch(e){ box.innerHTML = '<div class="muted">翻译失败：' + e.message + '</div>'; }
+    busy = false;
+  }
 })();
 </script>
 </body>
