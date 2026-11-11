@@ -320,7 +320,18 @@ def do_agent(question: str, cur_key: str = "") -> tuple[int, str, bytes]:
     except Exception:
         plan = {}
     import re as _re
+    steps_plan = plan.get("steps") or []
+    if len(steps_plan) >= 2 and (steps_plan[0].get("tool") == "parse"):
+        _nm = (steps_plan[0].get("args") or {}).get("name") or "1706.03762v7.pdf"
+        try:
+            _pd, _pk = _agent_parse(_nm)
+            _plan_key = _pk
+        except Exception:
+            _plan_key = ""
+    else:
+        _plan_key = ""
     tool = plan.get("tool") if plan.get("tool") in tools else "parse"
+    steps_done = []
     args = plan.get("args") or {}
     # 纠偏：关键词优先（模型规划常把 brief/graph/diff 误判成 ask）
     if any(k in question for k in ("汇报包", "汇报材料", "生成汇报")):
@@ -350,8 +361,14 @@ def do_agent(question: str, cur_key: str = "") -> tuple[int, str, bytes]:
         elif tool in ("ask", "brief", "graph"):
             key = args.get("key") or cur_key or _agent_last_key()
             p = _load(key) if key else None
+            if not p and _plan_key:
+                key = _plan_key
+                p = _load(key)
+                if p:
+                    steps_done.append({"tool": "parse", "key": key,
+                                       "title": p["meta"].get("title")})
             if not p:
-                # 兜底：默认解析 Attention v7（演示常用）
+                # 多步规划：先 parse 默认论文，再执行 ask/brief/graph
                 _path = _find_pdf("1706.03762v7.pdf")
                 if _path:
                     key = _key_of(_path)
@@ -360,6 +377,8 @@ def do_agent(question: str, cur_key: str = "") -> tuple[int, str, bytes]:
                         p = parse_pdf(_path)
                         p["fingerprint"] = fingerprint(p)
                         _save(key, p)
+                    steps_done.append({"tool": "parse", "key": key,
+                                       "title": p["meta"].get("title")})
             if not p:
                 return _json({"plan": plan, "tool": tool, "error": "没有可用论文，请先解析"}, 400)
             if tool == "ask":
@@ -396,7 +415,9 @@ def do_agent(question: str, cur_key: str = "") -> tuple[int, str, bytes]:
             result = {"compare": "请传 k1/k2"}
     except Exception as e:
         result, detail = {"error": str(e)[:200]}, ""
-    return _json({"plan": plan, "tool": tool, "args": args, "detail": detail, "result": result})
+    steps_done.append({"tool": tool, "detail": detail})
+    return _json({"plan": plan, "tool": tool, "args": args, "detail": detail,
+                  "steps": steps_done, "multi_step": len(steps_done) > 1, "result": result})
 
 
 def _agent_last_key() -> str:
