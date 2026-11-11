@@ -269,6 +269,44 @@ def _norm_paras(parsed: dict, limit: int = 1200) -> list[str]:
 _FW_RE = __import__("re").compile(r"future work|future research|future direction|后续工作|未来研究|展望", __import__("re").I)
 
 
+_FWM_RE = __import__("re").compile(r"future work|future research|future direction|后续工作|未来研究|展望", __import__("re").I)
+
+
+def do_future_multi(keys: list[str]) -> tuple[int, str, bytes]:
+    docs = []
+    for k in [x for x in keys if x][:6]:
+        p = _load(k)
+        if not p:
+            continue
+        picks = [x for x in p.get("paragraphs", []) if _FWM_RE.search(x.get("text") or "")][:2]
+        if not picks:
+            picks = [x for x in p.get("paragraphs", []) if x.get("kind") == "body"][-2:]
+        docs.append((p["meta"].get("title") or k, picks))
+    if not docs:
+        return _json({"error": "没有可用论文"}, 400)
+    ctx = "\n".join("[%s p.%s] %s" % (title, x["page"], (x.get("text") or "")[:420])
+                    for title, picks in docs for x in picks)[:6000]
+    directions, mode = [], "extractive"
+    if llm.available():
+        try:
+            raw = llm.chat([
+                {"role": "system", "content": ("只依据给定多篇论文的 Future Work/结论，合并去重后提炼 3–5 条尚未解决的方向；"
+                                              "每条注明来源 [标题 p.X]；两篇重复的只保留一条；原文没有就少给，不要编造。")},
+                {"role": "user", "content": ctx + "\n\n请输出尚未解决的方向。"},
+            ], temperature=0.1, max_tokens=450)
+            lines = [ln.strip(" -•") for ln in raw.splitlines() if ln.strip()]
+            directions = [ln for ln in lines if ln][:5]
+            mode = "llm"
+        except Exception:
+            pass
+    if not directions:
+        directions = ["[%s p.%s] %s" % (title, x["page"], (x.get("text") or "")[:80])
+                      for title, picks in docs for x in picks][:5]
+    return _json({"mode": mode, "papers": [title for title, _ in docs],
+                  "directions": directions,
+                  "note": "基于本地论文集合合并去重；未做外部时间线检索"})
+
+
 def do_future(key: str) -> tuple[int, str, bytes]:
     p = _load(key)
     if not p:
@@ -305,7 +343,7 @@ def do_future(key: str) -> tuple[int, str, bytes]:
 
 def do_agent(question: str, cur_key: str = "") -> tuple[int, str, bytes]:
     """最小 Agent 闭环：LLM 选工具 → 执行 → 返回计划与结果。"""
-    tools = ["parse", "ask", "brief", "graph", "diff", "compare", "future"]
+    tools = ["parse", "ask", "brief", "graph", "diff", "compare", "future", "future_multi"]
     prompt = ("你是科研助手 Agent。根据用户问题从工具中选一个并给参数，只输出 JSON："
               '{"tool":"parse|ask|brief|graph|diff|compare","args":{...},"why":"一句话"}。'
               "工具参数：parse{name}; ask{key,q}; brief{key}; graph{key}; diff{k1,k2}; compare{k1,k2,q}。"
@@ -352,6 +390,8 @@ def do_agent(question: str, cur_key: str = "") -> tuple[int, str, bytes]:
         tool = "graph"
     elif any(k in question for k in ("未来方向", "未来研究", "future work", "后续研究", "研究展望")):
         tool = "future"
+    elif any(k in question for k in ("多篇", "这几篇", "未解决", "还没解决", "综合")):
+        tool = "future_multi"
     elif any(k in question for k in ("差异", "版本对比", "改了什么", "修订")):
         tool = "diff"
     elif tool == "parse" and not _re.search(r"\.pdf", question) and not any(
@@ -362,6 +402,14 @@ def do_agent(question: str, cur_key: str = "") -> tuple[int, str, bytes]:
         if tool == "parse":
             name = args.get("name") or question
             result, detail = _agent_parse(name)
+        elif tool == "future_multi":
+            _keys = args.get("keys") or [cur_key] if cur_key else []
+            _keys = [x for x in _keys if x]
+            if not _keys:
+                _rows = _parsed_index()[:3]
+                _keys = [r["key"] for r in _rows]
+            _st, _ct, _body = do_future_multi(_keys)
+            result = json.loads(_body.decode("utf-8"))
         elif tool == "future":
             key = cur_key or _agent_last_key()
             if not key:
@@ -890,6 +938,9 @@ class Handler(SimpleHTTPRequestHandler):
                 payload = json.loads(body.decode("utf-8") or "{}")
                 question = payload.get("q", "")
                 return self._send(*do_agent(question))
+            if u.path == "/api/future_multi":
+                keys = [x for x in (q.get("keys", [""])[0] or "").split(",") if x]
+                return self._send(*do_future_multi(keys))
             if u.path == "/api/future":
                 return self._send(*do_future(q.get("key", [""])[0]))
             if u.path == "/api/diff":
