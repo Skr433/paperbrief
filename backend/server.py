@@ -333,6 +333,14 @@ def do_agent(question: str, cur_key: str = "") -> tuple[int, str, bytes]:
     tool = plan.get("tool") if plan.get("tool") in tools else "parse"
     steps_done = []
     # 两步演示：先 parse，再执行"然后/并且"后面的提问
+    if tool == "parse" and not _plan_key and any(k in question for k in ("然后", "并且")):
+        _m = __import__("re").search(r"[\w.\-]+\.pdf", question)
+        _nm = _m.group(0) if _m else "1706.03762v7.pdf"
+        try:
+            _pd, _pk = _agent_parse(_nm)
+            _plan_key = _pk
+        except Exception:
+            _plan_key = ""
     if _plan_key and tool == "parse" and any(k in question for k in ("然后", "并且", "再")):
         tool = "ask"
         question = question.split("然后")[-1].split("并且")[-1].split("再")[-1].strip() or question
