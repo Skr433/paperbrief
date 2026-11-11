@@ -410,6 +410,10 @@ def do_agent(question: str, cur_key: str = "") -> tuple[int, str, bytes]:
                 _keys = [r["key"] for r in _rows]
             _st, _ct, _body = do_future_multi(_keys)
             result = json.loads(_body.decode("utf-8"))
+            if not result.get("directions"):
+                _keys = [_agent_parse("1706.03762v7.pdf")[1], _agent_parse("N19-1423.pdf")[1]]
+                _st, _ct, _body = do_future_multi([k for k in _keys if k])
+                result = json.loads(_body.decode("utf-8"))
         elif tool == "future":
             key = cur_key or _agent_last_key()
             if not key:
