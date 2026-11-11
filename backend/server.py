@@ -332,6 +332,10 @@ def do_agent(question: str, cur_key: str = "") -> tuple[int, str, bytes]:
         _plan_key = ""
     tool = plan.get("tool") if plan.get("tool") in tools else "parse"
     steps_done = []
+    # 两步演示：先 parse，再执行"然后/并且"后面的提问
+    if _plan_key and tool == "parse" and any(k in question for k in ("然后", "并且", "再")):
+        tool = "ask"
+        question = question.split("然后")[-1].split("并且")[-1].split("再")[-1].strip() or question
     args = plan.get("args") or {}
     # 纠偏：关键词优先（模型规划常把 brief/graph/diff 误判成 ask）
     if any(k in question for k in ("汇报包", "汇报材料", "生成汇报")):
