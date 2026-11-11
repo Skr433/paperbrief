@@ -1,0 +1,28 @@
+services:
+  paperbrief:
+    build: .
+    image: paperbrief:latest
+    container_name: paperbrief
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      PAPERBRIEF_PDF_DIR: /app/pdf
+      PORT: "8000"
+    volumes:
+      - ./pdf:/app/pdf:ro
+      - ./data:/app/data
+    mem_limit: 2g
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: paperbrief-nginx
+    restart: unless-stopped
+    depends_on:
+      - paperbrief
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro

@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+data/
+pdf/
+.env
+*.zip
+.git/
+04_资料/
+05_日志/
