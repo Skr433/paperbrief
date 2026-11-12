@@ -377,8 +377,10 @@ def _agent_obs(tool: str, args: dict, question: str, cur_key: str):
         ans = res.get("answer")
         if llm.available() and res.get("anchors") and res.get("mode") == "rag":
             try:
-                txt = llm.answer_with_evidence(args.get("q") or question, res["anchors"])
-                pages = "、".join(str(a["page"]) for a in res["anchors"])
+                _facts = [a for a in res["anchors"] if a.get("fact")]
+                _use = _facts or res["anchors"][:1]
+                txt = llm.answer_with_evidence(args.get("q") or question, _use)
+                pages = "、".join(str(a["page"]) for a in _use)
                 ans = txt + "\n\n（依据原文：第 %s 页）" % pages
             except Exception:
                 pass
@@ -441,6 +443,11 @@ def agent_react(question: str, cur_key: str = "") -> tuple[int, str, bytes]:
             if step >= 1:
                 break
     if result is None:
+        _err = next((s for s in trace if s.get("error")), None)
+        if _err and ".pdf" in question:
+            return _json({"plan": {"why": "ReAct 循环"}, "tool": _err.get("action", "parse"),
+                          "steps": trace, "multi_step": len(trace) > 1,
+                          "result": {"error": _err.get("observation", "执行失败")}})
         _d, key = _agent_parse("1706.03762v7.pdf")
         result = {"key": key, "title": "Attention Is All You Need"}
     return _json({"plan": {"why": "ReAct 循环"}, "tool": trace[-1]["action"] if trace else "parse",
