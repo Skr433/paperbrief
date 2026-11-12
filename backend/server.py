@@ -421,6 +421,10 @@ def agent_react(question: str, cur_key: str = "") -> tuple[int, str, bytes]:
         except Exception:
             act = {}
         action = act.get("action")
+        # 确定性兜底：刚 parse 完且问题在问事实 → 下一步强制 ask
+        _intent = any(x in question for x in ("谁", "多少", "什么", "哪个", "BLEU", "作者", "GPU", "上下文", "参数", "？", "?"))
+        if trace and trace[-1].get("action") == "parse" and not trace[-1].get("error") and _intent:
+            action, act = "ask", {"thought": "已解析，继续回答事实问题", "args": {"q": question}}
         if action in (None, "", "final") or action not in AGENT_TOOLS:
             break
         args = act.get("args") if isinstance(act.get("args"), dict) else {}
@@ -428,6 +432,8 @@ def agent_react(question: str, cur_key: str = "") -> tuple[int, str, bytes]:
             result, obs, key = _agent_obs(action, args, question, key)
             trace.append({"step": step + 1, "thought": act.get("thought", ""),
                           "action": action, "observation": obs})
+            if action in ("ask", "diff", "future", "future_multi"):
+                break
         except Exception as e:
             obs = "工具失败：" + str(e)[:120]
             trace.append({"step": step + 1, "thought": act.get("thought", ""),
