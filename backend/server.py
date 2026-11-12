@@ -341,6 +341,107 @@ def do_future(key: str) -> tuple[int, str, bytes]:
                   "anchors": [{"page": x["page"], "bbox": x["bbox"]} for x in picks]})
 
 
+
+AGENT_TOOLS = ["parse", "ask", "brief", "graph", "diff", "future", "future_multi"]
+
+
+def _agent_obs(tool: str, args: dict, question: str, cur_key: str):
+    """执行一个工具，返回 (result_for_client, observation_text, new_key)。"""
+    if tool == "parse":
+        name = (args.get("name") or "").strip()
+        if not name:
+            raise ValueError("parse 缺少 name")
+        _d, k = _agent_parse(name)
+        if not k:
+            raise ValueError("文件不存在：" + name)
+        p = _load(k)
+        return ({"key": k, "title": p["meta"].get("title") if p else ""},
+                "已解析 %s（key=%s）" % (name, k), k)
+    if tool == "diff":
+        k1 = args.get("k1") or "1706.03762v1.pdf"
+        k2 = args.get("k2") or "1706.03762v7.pdf"
+        _st, _ct, _body = do_diff(k1, k2)
+        d = json.loads(_body.decode("utf-8"))
+        return d, "版本差异：+%s/-%s/改%s" % (d.get("stats", {}).get("added"),
+                                             d.get("stats", {}).get("removed"),
+                                             d.get("stats", {}).get("changed")), cur_key
+    key = args.get("key") or cur_key or _agent_last_key()
+    p = _load(key) if key else None
+    if not p:
+        _pd, key = _agent_parse("1706.03762v7.pdf")
+        p = _load(key)
+    if not p:
+        raise ValueError("没有可用论文")
+    if tool == "ask":
+        res = ask(p, args.get("q") or question, extra_terms=query_extra_terms(question))
+        ans = res.get("answer")
+        if llm.available() and res.get("anchors") and res.get("mode") == "rag":
+            try:
+                txt = llm.answer_with_evidence(args.get("q") or question, res["anchors"])
+                pages = "、".join(str(a["page"]) for a in res["anchors"])
+                ans = txt + "\n\n（依据原文：第 %s 页）" % pages
+            except Exception:
+                pass
+        return ({"answer": ans, "anchors": res.get("anchors", []), "title": p["meta"].get("title")},
+                "答案：%s" % str(ans)[:200], key)
+    if tool == "brief":
+        br = build_brief(p)
+        return ({"title": p["meta"].get("title"), "contributions": br.get("contributions", [])[:3],
+                 "summary": br.get("abstract") or br.get("ai_summary") or ""},
+                "汇报包：%d 条贡献" % len(br.get("contributions", [])), key)
+    if tool == "graph":
+        g = build_graph(p["meta"].get("title", ""), p.get("references") or [])
+        return ({"graph": g}, "图谱：%d 节点" % len(g.get("nodes") or []), key)
+    if tool == "future":
+        _st, _ct, _body = do_future(key)
+        d = json.loads(_body.decode("utf-8"))
+        return d, "未来方向 %d 条" % len(d.get("directions") or []), key
+    if tool == "future_multi":
+        _keys = args.get("keys") or [key]
+        _st, _ct, _body = do_future_multi([x for x in _keys if x])
+        d = json.loads(_body.decode("utf-8"))
+        return d, "多篇方向 %d 条" % len(d.get("directions") or []), key
+    raise ValueError("未知工具：" + tool)
+
+
+def agent_react(question: str, cur_key: str = "") -> tuple[int, str, bytes]:
+    """ReAct 循环：thought → action → observation，最多 3 步；带 schema 校验与重试。"""
+    base = ("可用工具（只允许这些）：parse{name}; ask{key,q}; brief{key}; graph{key}; "
+            "diff{k1,k2}; future{key}; future_multi{keys:[...]}。")
+    trace, obs, key, result = [], "", cur_key, None
+    for step in range(3):
+        prompt = (base + " 输出 JSON：{\"thought\":\"...\",\"action\":\"工具名或 final\",\"args\":{...}}。"
+                  "信息已足够时 action=final，不再调用工具。\n用户问题：" + question +
+                  ("\n当前论文 key：" + key if key else "") +
+                  ("\n之前观察：" + obs[-600:] if obs else ""))
+        try:
+            raw = llm.chat([{"role": "user", "content": prompt}], temperature=0, max_tokens=220)
+            m = __import__("re").search(r"\{.*\}", raw, __import__("re").S)
+            act = json.loads(m.group(0)) if m else {}
+        except Exception:
+            act = {}
+        action = act.get("action")
+        if action in (None, "", "final") or action not in AGENT_TOOLS:
+            break
+        args = act.get("args") if isinstance(act.get("args"), dict) else {}
+        try:
+            result, obs, key = _agent_obs(action, args, question, key)
+            trace.append({"step": step + 1, "thought": act.get("thought", ""),
+                          "action": action, "observation": obs})
+        except Exception as e:
+            obs = "工具失败：" + str(e)[:120]
+            trace.append({"step": step + 1, "thought": act.get("thought", ""),
+                          "action": action, "observation": obs, "error": True})
+            if step >= 1:
+                break
+    if result is None:
+        _d, key = _agent_parse("1706.03762v7.pdf")
+        result = {"key": key, "title": "Attention Is All You Need"}
+    return _json({"plan": {"why": "ReAct 循环"}, "tool": trace[-1]["action"] if trace else "parse",
+                  "steps": trace, "multi_step": len(trace) > 1, "result": result,
+                  "truncated": len(trace) >= 3})
+
+
 def do_agent(question: str, cur_key: str = "") -> tuple[int, str, bytes]:
     """最小 Agent 闭环：LLM 选工具 → 执行 → 返回计划与结果。"""
     tools = ["parse", "ask", "brief", "graph", "diff", "compare", "future", "future_multi"]
@@ -1130,7 +1231,10 @@ class Handler(SimpleHTTPRequestHandler):
                 return self._send(*do_parse(q.get("name", [""])[0]))
             if u.path == "/api/agent":
                 payload = json.loads(body.decode("utf-8") or "{}")
-                return self._send(*do_agent(payload.get("q", ""), payload.get("key", "")))
+                try:
+                    return self._send(*agent_react(payload.get("q", ""), payload.get("key", "")))
+                except Exception:
+                    return self._send(*do_agent(payload.get("q", ""), payload.get("key", "")))
             if u.path == "/api/ask_stream":
                 key = q.get("key", [""])[0]
                 parsed = _load(key)
