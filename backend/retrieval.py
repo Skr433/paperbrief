@@ -312,6 +312,27 @@ def _hardware_anchors(parsed: dict, question: str, limit: int = 2) -> list[dict]
     return [a for _, a in cand[:limit]]
 
 
+_HP_Q = re.compile(r"Adam|β|beta|学习率|dropout|warmup|label smoothing", re.I)
+
+
+def _hyper_anchors(parsed: dict, question: str, limit: int = 1) -> list[dict]:
+    """超参数类问题：强制找含 Adam/β/0.9/0.98 的段落。"""
+    if not _HP_Q.search(question or ""):
+        return []
+    out = []
+    pat = re.compile(r"(Adam|β1|β2|epsilon|0\.9|0\.98|dropout|warmup|label smoothing)", re.I)
+    for p in parsed.get("paragraphs", []):
+        txt = p.get("text") or ""
+        if len(txt) < 40:
+            continue
+        if pat.search(txt):
+            out.append({"page": p["page"], "bbox": p["bbox"], "text": txt[:450],
+                        "score": 1.0, "fact": True})
+            if len(out) >= limit:
+                break
+    return out
+
+
 def ask(parsed: dict, question: str, topk: int = 3, extra_terms: str = "", doc_key: str = "") -> dict:
     """返回 {answer, anchors:[{page,bbox,text,score}], mode}。"""
     paras = [p for p in parsed["paragraphs"] if len(p["text"]) > 40]
@@ -415,7 +436,7 @@ def ask(parsed: dict, question: str, topk: int = 3, extra_terms: str = "", doc_k
         answer_bits.append(" ".join((best or sents)[:2])[:300])
 
     # 参数/上下文类问题：补数字型证据（BM25 常把附录排前面）
-    for _a in _fact_extra_anchors(parsed, question) + _hardware_anchors(parsed, question):
+    for _a in _fact_extra_anchors(parsed, question) + _hardware_anchors(parsed, question) + _hyper_anchors(parsed, question):
         if not any(_a["page"] == b["page"] and _a["bbox"] == b["bbox"] for b in anchors):
             anchors.append(_a)
             answer_bits.append((_a["text"] or "")[:240])
