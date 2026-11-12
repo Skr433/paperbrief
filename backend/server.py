@@ -442,6 +442,15 @@ def agent_react(question: str, cur_key: str = "") -> tuple[int, str, bytes]:
                           "action": action, "observation": obs, "error": True})
             if step >= 1:
                 break
+    # 兜底：只拿到 key 但没回答事实问题时，补一次 ask
+    _intent2 = any(x in question for x in ("谁", "多少", "什么", "哪个", "BLEU", "作者", "GPU", "上下文", "参数", "？", "?"))
+    if _intent2 and isinstance(result, dict) and result.get("key") and not result.get("answer"):
+        try:
+            _a, _obs, _ = _agent_obs("ask", {"q": question}, question, result["key"])
+            result = _a
+            trace.append({"step": len(trace) + 1, "thought": "补答事实问题", "action": "ask", "observation": _obs})
+        except Exception:
+            pass
     if result is None:
         _err = next((s for s in trace if s.get("error")), None)
         if _err and ".pdf" in question:
