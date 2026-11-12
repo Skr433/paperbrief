@@ -437,7 +437,7 @@
   <header class="l-head">
     <a class="btn btn-home" href="#/" title="返回首页">⌂ 首页</a>
     <div class="logo">Paper<span>Brief</span></div>
-    <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.61</span></div>
+    <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.62</span></div>
     <div class="grow"></div>
     <a class="btn" href="#/about">关于</a>
     <a class="btn btn-primary" href="#/app/brief">进入工作台</a>
@@ -446,7 +446,7 @@
   <section class="hero">
     <p class="hero-kicker">科研阅读工具 · 上传 PDF，自动整理成可核对的汇报材料</p>
     <h1>读论文，出汇报，<br/>每条信息都有源</h1>
-    <p class="hero-sub">上传一篇 PDF，生成带页码锚点的汇报包：摘要、贡献、结果、图表、讲稿。<br/>点任意结论旁的页码，左侧原文立刻跳转并高亮。</p>
+    <p class="hero-sub">摘要、贡献、结果、图表、讲稿一次出齐。<br/>点任意结论旁的页码，左侧原文立刻跳转并高亮。</p>
     <div class="hero-actions">
       <a class="btn btn-primary btn-lg" href="#/app/brief">开始使用</a>
       <button class="btn btn-lg" id="landingDemo">看演示</button>
@@ -483,7 +483,7 @@
   </div>
 
   <footer class="l-foot">
-    <span>PaperBrief v0.14.61 · 每条结论都能点回原文</span>
+    <span>PaperBrief v0.14.62 · 每条结论都能点回原文</span>
     <span><a href="#/about">技术说明与已知限制</a> · 第九届传智杯 · 科研小助手 Agent</span>
   </footer>
 </div>
@@ -492,7 +492,7 @@
   <header class="l-head">
     <a class="btn btn-home" href="#/" title="返回首页">⌂ 首页</a>
     <div class="logo">Paper<span>Brief</span></div>
-    <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.61</span></div>
+    <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.62</span></div>
     <div class="grow"></div>
     <a class="btn btn-primary" href="#/app/brief">进入工作台</a>
   </header>
@@ -505,7 +505,7 @@
     <p>扫描版 PDF 无 OCR；部分论文参考文献排版特殊时解析条数会偏少（已给出提示）；arXiv 从国内访问偶发超时，已做重试、缓存与友好提示；本地 3B 模型质量弱于云端，定位为离线演示。</p>
     <p><a href="https://github.com/Skr433/paperbrief">代码仓库</a> · <a href="#/app/brief">进入工作台</a></p>
   </section>
-  <footer class="l-foot"><span>PaperBrief v0.14.61</span><span>第九届传智杯 · 赛道 10040</span></footer>
+  <footer class="l-foot"><span>PaperBrief v0.14.62</span><span>第九届传智杯 · 赛道 10040</span></footer>
 </div>
 
 <div id="app-shell" style="display:none">
@@ -526,7 +526,7 @@
 <header>
   <a class="btn btn-home" href="#/" title="返回首页">⌂ 首页</a>
   <div class="logo">Paper<span>Brief</span></div>
-  <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.61</span></div>
+  <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.62</span></div>
   <div class="grow"></div>
   <select id="lib"><option>正在加载论文库…</option></select>
   <button id="btnParse" class="primary">解析并生成</button>
@@ -596,7 +596,7 @@
       </div>
       <div id="tab-tr" style="display:none">
       <div class="card">
-        <h3>整页翻译（原文 / 译文对照）</h3>
+        <h3>整页翻译</h3>
     <div style="display:flex;gap:8px;margin:6px 0 10px">
       <button id="trModeList" class="btn">逐段译文</button>
       <button id="trModeBi" class="btn">中英对照</button>
@@ -2160,7 +2160,7 @@ loadLibrary().then(()=>{
 <div id="agentTip">拖动我 · 点我提问</div>
 <div id="agentMask"></div>
 <aside id="agentPanel">
-  <h3>Agent <span style="font-size:12px;color:#6b7280;font-weight:400">选工具 · 执行 · 可核对</span><button class="close" id="agentClose">×</button></h3>
+  <h3>Agent<button class="close" id="agentClose">×</button></h3>
   <input id="agentQ" placeholder="例如：解析 1706.03762v7.pdf / 用了多少 GPU / 生成汇报包" />
   <button id="agentRun">运行</button>
   <div id="agentOut"><div class="plan">输入问题，Agent 会选择工具并执行。</div></div>
