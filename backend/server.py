@@ -392,10 +392,12 @@ def _agent_obs(tool: str, args: dict, question: str, cur_key: str):
         return ({"answer": ans, "anchors": res.get("anchors", []), "title": p["meta"].get("title")},
                 "答案：%s" % str(ans)[:200], key)
     if tool == "param":
-        p = _load(cur_key or _agent_last_key())
+        _k = cur_key
+        if not _k:
+            _pd, _k = _agent_parse("1706.03762v7.pdf")
+        p = _load(_k) if _k else None
         if not p:
-            _pd, cur_key = _agent_parse("1706.03762v7.pdf")
-            p = _load(cur_key)
+            raise ValueError("没有可用论文")
         pat = __import__("re").compile(r"(β1|β2|beta1|beta2|0\.98|epsilon|ε)", __import__("re").I)
         for x in p.get("paragraphs", []):
             txt = x.get("text") or ""
