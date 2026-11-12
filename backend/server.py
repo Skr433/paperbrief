@@ -378,8 +378,7 @@ def _agent_obs(tool: str, args: dict, question: str, cur_key: str):
         ans = res.get("answer")
         if llm.available() and res.get("anchors") and res.get("mode") == "rag":
             try:
-                _anchors = sorted(res["anchors"], key=lambda a: 0 if a.get("fact") else 1)
-                _use = _anchors[:2]
+                _use = res["anchors"][:3]
                 txt = llm.answer_with_evidence(args.get("q") or question, _use)
                 pages = "、".join(str(a["page"]) for a in _use)
                 ans = txt + "\n\n（依据原文：第 %s 页）" % pages
