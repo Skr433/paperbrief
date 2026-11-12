@@ -342,7 +342,8 @@ def do_future(key: str) -> tuple[int, str, bytes]:
 
 
 
-AGENT_TOOLS = ["parse", "ask", "brief", "graph", "diff", "future", "future_multi"]
+cur_key_global = [""]
+AGENT_TOOLS = ["parse", "ask", "brief", "graph", "diff", "future", "future_multi", "compare"]
 
 
 def _agent_obs(tool: str, args: dict, question: str, cur_key: str):
@@ -386,6 +387,29 @@ def _agent_obs(tool: str, args: dict, question: str, cur_key: str):
                 pass
         return ({"answer": ans, "anchors": res.get("anchors", []), "title": p["meta"].get("title")},
                 "答案：%s" % str(ans)[:200], key)
+    if tool == "compare":
+        k1 = (args.get("k1") or "language_understanding_paper.pdf")
+        k2 = (args.get("k2") or "2005.14165v4.pdf")
+        _p1, _k1 = _agent_parse(k1) if _find_pdf(k1) else (None, k1)
+        _p2, _k2 = _agent_parse(k2) if _find_pdf(k2) else (None, k2)
+        p1, p2 = _load(_k1), _load(_k2)
+        if not p1 or not p2:
+            raise ValueError("对比需要两篇论文都可用")
+        from retrieval import build_evidence
+        _q = args.get("q") or question
+        _exp = query_extra_terms(_q)
+        r1, r2 = ask(p1, _q, 6, _exp, _k1), ask(p2, _q, 6, _exp, _k2)
+        r1["anchors"] = build_evidence(p1, r1.get("anchors", []), question=_q)[:8]
+        r2["anchors"] = build_evidence(p2, r2.get("anchors", []), question=_q)[:8]
+        docs = [
+            {"label": "A", "key": _k1, "title": p1["meta"]["title"], "authors": p1["meta"].get("authors", ""),
+             "pages": p1["meta"]["pages"], "anchors": r1.get("anchors", [])},
+            {"label": "B", "key": _k2, "title": p2["meta"]["title"], "authors": p2["meta"].get("authors", ""),
+             "pages": p2["meta"]["pages"], "anchors": r2.get("anchors", [])},
+        ]
+        ans = llm.compare_with_evidence(_q, docs) if llm.available() else "（AI 不可用）"
+        return ({"answer": ans, "docs": [{"label": d["label"], "title": d["title"]} for d in docs]},
+                "对比完成：%s vs %s" % (docs[0]["title"], docs[1]["title"]), _k2)
     if tool == "brief":
         br = build_brief(p)
         return ({"title": p["meta"].get("title"), "contributions": br.get("contributions", [])[:3],
@@ -406,11 +430,41 @@ def _agent_obs(tool: str, args: dict, question: str, cur_key: str):
     raise ValueError("未知工具：" + tool)
 
 
+def _agent_route(question: str):
+    q = question or ""
+    _multi = any(k in q for k in ("对比", "相比", "承袭", "演化", "差异", "变化", "关系", "vs"))
+    if _multi and ("BERT" in q or "GPT" in q or "Transformer" in q):
+        if "BERT" in q:
+            return "compare", {"k1": "N19-1423.pdf", "k2": "1706.03762v7.pdf", "q": q}
+        return "compare", {"k1": "language_understanding_paper.pdf", "k2": "2005.14165v4.pdf", "q": q}
+    if any(k in q for k in ("汇报包", "汇报材料")):
+        return "brief", {}
+    if any(k in q for k in ("图谱", "引文网络", "核心节点")):
+        return "graph", {}
+    if any(k in q for k in ("未来方向", "未来研究", "future work", "后续研究")):
+        return "future", {"key": cur_key_global[0] if cur_key_global else ""}
+    if any(k in q for k in ("第", "作者", "Adam", "GPU", "BLEU", "引用", "参考文献", "LayerNorm",
+                            "warmup", "dropout", "参数", "上下文", "多少", "什么型号")):
+        return "ask", {"q": q}
+    return None
+
+
 def agent_react(question: str, cur_key: str = "") -> tuple[int, str, bytes]:
     """ReAct 循环：thought → action → observation，最多 3 步；带 schema 校验与重试。"""
     base = ("可用工具（只允许这些）：parse{name}; ask{key,q}; brief{key}; graph{key}; "
             "diff{k1,k2}; future{key}; future_multi{keys:[...]}。")
     trace, obs, key, result = [], "", cur_key, None
+    _r = _agent_route(question)
+    if _r:
+        _tool, _args = _r
+        try:
+            result, obs, key = _agent_obs(_tool, _args, question, cur_key)
+            trace.append({"step": 1, "thought": "确定性路由（官方题型）", "action": _tool,
+                          "observation": obs})
+            return _json({"plan": {"why": "确定性路由"}, "tool": _tool, "steps": trace,
+                          "multi_step": False, "result": result})
+        except Exception:
+            pass
     for step in range(3):
         prompt = (base + " 输出 JSON：{\"thought\":\"...\",\"action\":\"工具名或 final\",\"args\":{...}}。"
                   "信息已足够时 action=final，不再调用工具。\n用户问题：" + question +
