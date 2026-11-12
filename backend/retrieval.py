@@ -320,7 +320,7 @@ def _hyper_anchors(parsed: dict, question: str, limit: int = 1) -> list[dict]:
     if not _HP_Q.search(question or ""):
         return []
     out = []
-    pat = re.compile(r"(Adam|β1|β2|epsilon|0\.9|0\.98|dropout|warmup|label smoothing)", re.I)
+    pat = re.compile(r"(β1|β2|beta1|beta2|0\.9[^0-9]|0\.98|epsilon|dropout\s*=\s*0\.|warmup\s*=\s*\d)", re.I)
     for p in parsed.get("paragraphs", []):
         txt = p.get("text") or ""
         if len(txt) < 40:
