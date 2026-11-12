@@ -343,7 +343,7 @@ def do_future(key: str) -> tuple[int, str, bytes]:
 
 
 cur_key_global = [""]
-AGENT_TOOLS = ["parse", "ask", "brief", "graph", "diff", "future", "future_multi", "compare"]
+AGENT_TOOLS = ["parse", "ask", "brief", "graph", "diff", "future", "future_multi", "compare", "param"]
 
 
 def _agent_obs(tool: str, args: dict, question: str, cur_key: str):
@@ -386,6 +386,19 @@ def _agent_obs(tool: str, args: dict, question: str, cur_key: str):
                 pass
         return ({"answer": ans, "anchors": res.get("anchors", []), "title": p["meta"].get("title")},
                 "答案：%s" % str(ans)[:200], key)
+    if tool == "param":
+        p = _load(cur_key or _agent_last_key())
+        if not p:
+            _pd, cur_key = _agent_parse("1706.03762v7.pdf")
+            p = _load(cur_key)
+        pat = __import__("re").compile(r"(β1|β2|beta1|beta2|0\.98|epsilon|ε)", __import__("re").I)
+        for x in p.get("paragraphs", []):
+            txt = x.get("text") or ""
+            if pat.search(txt) and len(txt) > 30:
+                return ({"answer": txt[:300] + " [p.%s]" % x["page"],
+                         "anchors": [{"page": x["page"], "bbox": x["bbox"], "text": txt[:400]}]},
+                        "命中超参数段落 p.%s" % x["page"], cur_key or "")
+        raise ValueError("未找到超参数段落")
     if tool == "compare":
         k1 = (args.get("k1") or "language_understanding_paper.pdf")
         k2 = (args.get("k2") or "2005.14165v4.pdf")
@@ -444,7 +457,9 @@ def _agent_route(question: str):
         return "graph", {}
     if any(k in q for k in ("未来方向", "未来研究", "future work", "后续研究")):
         return "future", {"key": cur_key_global[0] if cur_key_global else ""}
-    if any(k in q for k in ("第", "作者", "Adam", "GPU", "BLEU", "引用", "参考文献", "LayerNorm",
+    if any(k in q for k in ("Adam", "β", "beta", "超参数")):
+        return "param", {}
+    if any(k in q for k in ("第", "作者", "GPU", "BLEU", "引用", "参考文献", "LayerNorm",
                             "warmup", "dropout", "参数", "上下文", "多少", "什么型号")):
         return "ask", {"q": q}
     return None
