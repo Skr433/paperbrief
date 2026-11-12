@@ -378,8 +378,8 @@ def _agent_obs(tool: str, args: dict, question: str, cur_key: str):
         ans = res.get("answer")
         if llm.available() and res.get("anchors") and res.get("mode") == "rag":
             try:
-                _facts = [a for a in res["anchors"] if a.get("fact")]
-                _use = _facts or res["anchors"][:1]
+                _anchors = sorted(res["anchors"], key=lambda a: 0 if a.get("fact") else 1)
+                _use = _anchors[:2]
                 txt = llm.answer_with_evidence(args.get("q") or question, _use)
                 pages = "、".join(str(a["page"]) for a in _use)
                 ans = txt + "\n\n（依据原文：第 %s 页）" % pages
@@ -433,6 +433,8 @@ def _agent_obs(tool: str, args: dict, question: str, cur_key: str):
 def _agent_route(question: str):
     q = question or ""
     _multi = any(k in q for k in ("对比", "相比", "承袭", "演化", "差异", "变化", "关系", "vs"))
+    if "GPT" in q and any(k in q for k in ("参数", "上下文", "LayerNorm", "层", "长度")):
+        _multi = True
     if _multi and ("BERT" in q or "GPT" in q or "Transformer" in q):
         if "BERT" in q:
             return "compare", {"k1": "N19-1423.pdf", "k2": "1706.03762v7.pdf", "q": q}
