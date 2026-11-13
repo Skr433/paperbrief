@@ -437,7 +437,7 @@
   <header class="l-head">
     <a class="btn btn-home" href="#/" title="返回首页">⌂ 首页</a>
     <div class="logo">Paper<span>Brief</span></div>
-    <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.63</span></div>
+    <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.64</span></div>
     <div class="grow"></div>
     <a class="btn" href="#/about">关于</a>
     <a class="btn btn-primary" href="#/app/brief">进入工作台</a>
@@ -483,7 +483,7 @@
   </div>
 
   <footer class="l-foot">
-    <span>PaperBrief v0.14.63 · 每条结论都能点回原文</span>
+    <span>PaperBrief v0.14.64 · 每条结论都能点回原文</span>
     <span><a href="#/about">技术说明与已知限制</a> · 第九届传智杯 · 科研小助手 Agent</span>
   </footer>
 </div>
@@ -492,7 +492,7 @@
   <header class="l-head">
     <a class="btn btn-home" href="#/" title="返回首页">⌂ 首页</a>
     <div class="logo">Paper<span>Brief</span></div>
-    <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.63</span></div>
+    <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.64</span></div>
     <div class="grow"></div>
     <a class="btn btn-primary" href="#/app/brief">进入工作台</a>
   </header>
@@ -505,7 +505,7 @@
     <p>扫描版 PDF 无 OCR；部分论文参考文献排版特殊时解析条数会偏少（已给出提示）；arXiv 从国内访问偶发超时，已做重试、缓存与友好提示；本地 3B 模型质量弱于云端，定位为离线演示。</p>
     <p><a href="https://github.com/Skr433/paperbrief">代码仓库</a> · <a href="#/app/brief">进入工作台</a></p>
   </section>
-  <footer class="l-foot"><span>PaperBrief v0.14.63</span><span>第九届传智杯 · 赛道 10040</span></footer>
+  <footer class="l-foot"><span>PaperBrief v0.14.64</span><span>第九届传智杯 · 赛道 10040</span></footer>
 </div>
 
 <div id="app-shell" style="display:none">
@@ -526,7 +526,7 @@
 <header>
   <a class="btn btn-home" href="#/" title="返回首页">⌂ 首页</a>
   <div class="logo">Paper<span>Brief</span></div>
-  <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.63</span></div>
+  <div class="sub">论文汇报包助手 · <span style="font-weight:600">v0.14.64</span></div>
   <div class="grow"></div>
   <select id="lib"><option>正在加载论文库…</option></select>
   <button id="btnParse" class="primary">解析并生成</button>
@@ -1899,7 +1899,7 @@ async function doAskStream(q){
   title.appendChild(tag);
   c.appendChild(title);
   const pgAll = [...new Set((anchors || []).map(a => a.page))].join("、");
-  const stepLine = el("div", "", `思考过程：检索命中 ${(anchors || []).length} 段 · 证据第 ${pgAll || "-"} 页 · 生成 ${full.length} 字 · ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+  const stepLine = el("div", "", `思考过程：检索命中 ${(anchors || []).length} 段 · 证据第 ${pgAll || "-"} 页 · 生成 ${full.length} 字`);
   stepLine.style.cssText = "font-size:13px;color:#4b5563;margin:2px 0 8px";
   c.appendChild(stepLine);
   c.appendChild(el("div", "ans", full));
@@ -2235,6 +2235,7 @@ loadLibrary().then(()=>{
       else if(res.contributions) body = res.contributions.map(c=>"· " + (c.text||c)).join("<br/>");
       else if(res.graph) body = "图谱：节点 " + (res.graph.nodes||[]).length + " 个，边 " + (res.graph.edges||[]).length + " 条";
       else if(res.stats) body = "版本差异：段落 +" + res.stats.added + " / -" + res.stats.removed + " / 改写 " + res.stats.changed;
+      else if(res.directions) body = (res.directions || []).map((d, i) => (i + 1) + ". " + d).join("<br/>");
       else body = "完成：" + JSON.stringify(res).slice(0,300);
       const pages = (res.anchors||[]).map(a=>a.page).filter((v,i,arr)=>arr.indexOf(v)===i);
       const paper = res.title ? '论文：' + res.title + ' · ' : '';
