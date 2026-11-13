@@ -328,16 +328,18 @@ def do_future(key: str) -> tuple[int, str, bytes]:
             mode = "llm"
         except Exception:
             pass
+    # 不足 3 条：只补中文方向；英文原文不塞进列表，改由 note 说明条数
+    _cn = __import__("re").compile(r"[\u4e00-\u9fff]")
     if len(directions) < 3:
-        # 不足 3 条时用原文摘录补齐（保持可核对）
         for x in picks:
             if len(directions) >= 3:
                 break
             snippet = (x.get("text") or "")[:80] + " [p.%s]" % x["page"]
-            if snippet not in directions:
+            if _cn.search(snippet) and snippet not in directions:
                 directions.append(snippet)
+    _note = ("原文仅给出 %d 条明确方向" % len(directions)) if len(directions) < 3 else ""
     return _json({"key": key, "title": p["meta"].get("title"),
-                  "directions": directions, "mode": mode,
+                  "directions": directions, "mode": mode, "note": _note,
                   "anchors": [{"page": x["page"], "bbox": x["bbox"]} for x in picks]})
 
 
