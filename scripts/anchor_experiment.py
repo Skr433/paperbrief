@@ -16,7 +16,7 @@ import sys
 import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-for cand in (r"E:\deepseek\对话\_pylibs", r"C:\Users\ASUS\Desktop\paperbrief\05_deps\_pylibs",
+for cand in (r"E:\deepseek\对话\_pylibs", r"E:\paperbrief_资料\05_deps\_pylibs",
              os.path.join(ROOT, "_pylibs")):
     if os.path.isdir(cand) and cand not in sys.path:
         sys.path.insert(0, cand)
