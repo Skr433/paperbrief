@@ -5,7 +5,7 @@
 
 **代码仓库**：<https://github.com/Skr433/paperbrief>
 **在线演示**：<http://1.14.98.248/>（腾讯云，长期在线）
-**演示视频**：上传后填入（省赛版 6:00 / 1080p）
+**演示视频**：<https://www.bilibili.com/video/BV18XWB69ERU/>（6:01 / 1080p）
 
 ---
 
