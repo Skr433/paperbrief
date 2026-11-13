@@ -333,6 +333,21 @@ def _hyper_anchors(parsed: dict, question: str, limit: int = 1) -> list[dict]:
     return out
 
 
+_CN_NUM = {"一": 1, "二": 2, "两": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9, "十": 10}
+
+
+def _cn_num(s: str) -> int:
+    """中文数字转 int：六→6，十一→11，二十三→23。"""
+    if s.isdigit():
+        return int(s)
+    if s == "十":
+        return 10
+    if "十" in s:
+        a, _, b = s.partition("十")
+        return (_CN_NUM.get(a, 1) * 10) + (_CN_NUM.get(b, 0) if b else 0)
+    return _CN_NUM.get(s, 0)
+
+
 def ask(parsed: dict, question: str, topk: int = 3, extra_terms: str = "", doc_key: str = "") -> dict:
     """返回 {answer, anchors:[{page,bbox,text,score}], mode}。"""
     paras = [p for p in parsed["paragraphs"] if len(p["text"]) > 40]
@@ -347,9 +362,9 @@ def ask(parsed: dict, question: str, topk: int = 3, extra_terms: str = "", doc_k
         alist = meta.get("author_list") or []
         aff = meta.get("affiliations") or ""
         bbox = meta.get("authors_bbox") or [0, 0, 0, 0]
-        m2 = re.search(r"第\s*(\d+)\s*(?:位)?\s*作者", question) or re.search(r"(\d+)(?:st|nd|rd|th)\s+author", ql)
+        m2 = re.search(r"第\s*([0-9一二两三四五六七八九十]+)\s*(?:位)?\s*作者", question) or re.search(r"(\d+)(?:st|nd|rd|th)\s+author", ql)
         if m2 and alist:
-            idx = int(m2.group(1)) - 1
+            idx = _cn_num(m2.group(1)) - 1
             if 0 <= idx < len(alist):
                 txt = f"第 {idx + 1} 作者：{alist[idx]}"
                 if aff:
@@ -420,7 +435,7 @@ def ask(parsed: dict, question: str, topk: int = 3, extra_terms: str = "", doc_k
                     rescored.append((sc2, i2))
             scored = rescored
 
-    # 只保留与最佳命中分数接近的段落，避免"凑满三条"带进无关证据
+    # 只保留接近最佳分数的段落
     top_score = scored[0][0] if scored else 0.0
     keep = [(sc, i) for sc, i in scored[:topk] if sc > 0 and (top_score == 0 or sc >= top_score * 0.45)]
 
@@ -435,7 +450,6 @@ def ask(parsed: dict, question: str, topk: int = 3, extra_terms: str = "", doc_k
         best = [s for s in sents if any(t in s.lower() for t in q_tokens)]
         answer_bits.append(" ".join((best or sents)[:2])[:300])
 
-    # 参数/上下文类问题：补数字型证据（BM25 常把附录排前面）
     for _a in _fact_extra_anchors(parsed, question) + _hardware_anchors(parsed, question) + _hyper_anchors(parsed, question):
         if not any(_a["page"] == b["page"] and _a["bbox"] == b["bbox"] for b in anchors):
             anchors.append(_a)
